@@ -420,7 +420,10 @@ function resize() {
   const isTouchDevice = (typeof window.matchMedia === 'function')
     && window.matchMedia('(pointer: coarse)').matches;
   W = isTouchDevice ? window.innerWidth : Math.min(window.innerWidth, 420);
-  H = window.innerHeight;
+  // スマホはツールバー分を除いた実際に見える高さを使う（地面が画面外に出るのを防ぐ）
+  H = (window.visualViewport && window.visualViewport.height)
+    ? Math.round(window.visualViewport.height)
+    : window.innerHeight;
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width = W + 'px';
@@ -751,7 +754,13 @@ for (let i = 0; i < 15; i++) {
   });
 }
 
-window.addEventListener('resize', () => { resize(); if (state === 'start') plateX = W / 2; });
+function handleViewportResize() { resize(); if (state === 'start') plateX = W / 2; }
+window.addEventListener('resize', handleViewportResize);
+window.addEventListener('orientationchange', handleViewportResize);
+// スマホのツールバー開閉で見える高さが変わったときも追従
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', handleViewportResize);
+}
 
 // --- Helpers ---
 function getStackTopWorld() {
