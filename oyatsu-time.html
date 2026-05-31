@@ -1995,8 +1995,8 @@ function update(dt) {
     syncPauseBtnVisibility();
   }
 
-  // Keyboard plate movement
-  if (!isDragging && state !== 'collapsed') {
+  // Keyboard plate movement（崩壊中もお皿を操作してアイテムを蹴散らせる）
+  if (!isDragging) {
     const margin = PLATE_W * 0.4;
     if (keysDown['ArrowLeft'] || keysDown['a'] || keysDown['A']) {
       plateX = Math.max(margin, plateX - PLATE_SPEED * UNIT);
@@ -2252,9 +2252,9 @@ function update(dt) {
           };
           const mogX = falling.x;
           const mogY = landingScreenY;
-          setTimeout(() => { addFloatingText(mogX, mogY - 36, 'もぐ', '#8B6F47'); }, 0);
-          setTimeout(() => { addFloatingText(mogX, mogY - 52, 'もぐ', '#A0785C'); }, 160);
-          setTimeout(() => { addFloatingText(mogX, mogY - 68, '…おいし♪', '#C48B5C'); }, 320);
+          setTimeout(() => { addFloatingText(mogX, mogY - 40, 'もぐ', '#8B6F47'); }, 0);
+          setTimeout(() => { addFloatingText(mogX, mogY - 74, 'もぐ', '#A0785C'); }, 160);
+          setTimeout(() => { addFloatingText(mogX, mogY - 108, '…おいし♪', '#C48B5C'); }, 320);
           canvas.classList.add('shake');
           setTimeout(() => canvas.classList.remove('shake'), 200);
         } else {
@@ -2342,7 +2342,7 @@ function update(dt) {
         playSweetLandSfx();
 
         addFloatingText(landX, landingScreenY - 50, rating, ratingColor);
-        addFloatingText(landX, landingScreenY - 30, `+${itemScore}`, '#FFF8EE');
+        addFloatingText(landX, landingScreenY - 30, `+${itemScore}`, fever ? '#FFE9A8' : '#5A3A1E');
         addParticles(landX, landingScreenY, falling.type.color, 8);
         document.getElementById('score-display').textContent = score;
         if (stack.length > maxStackCount) {
@@ -2871,7 +2871,7 @@ function draw() {
     ctx.font = `900 ${Math.round(22 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillStyle = ft.color;
-    ctx.fillText(ft.text, ft.x, ft.screenY);
+    ctx.fillText(ft.text, ft.x, ft.screenY - 20 * UNIT);
   }
   ctx.globalAlpha = 1;
 
