@@ -1,0 +1,2749 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>おやつタイム 🍩</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap');
+  * {
+    margin: 0; padding: 0; box-sizing: border-box;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  body {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    background: linear-gradient(180deg, #FFF5E6 0%, #FFE4CC 50%, #FFDAB9 100%);
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    height: 100dvh; width: 100vw;
+  }
+  canvas { display: block; margin: 0 auto; touch-action: none; }
+  #ui-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none; display: flex; flex-direction: column; align-items: center;
+  }
+  #hud {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    width: 100%; max-width: 420px; padding: 16px 20px; pointer-events: none;
+    gap: 12px;
+  }
+  .hud-left-col {
+    display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+  }
+  .hud-box {
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(8px);
+    border-radius: 16px; padding: 8px 16px;
+    box-shadow: 0 2px 12px rgba(200,150,100,0.2);
+  }
+  .hud-label { font-size: 11px; color: #C48B5C; font-weight: 700; letter-spacing: 0.05em; }
+  .hud-value { font-size: 24px; font-weight: 900; color: #8B5E3C; }
+  #pause-btn {
+    flex-shrink: 0; pointer-events: auto; margin-top: 2px;
+    width: 44px; height: 44px; border-radius: 14px; border: 1px solid rgba(139,94,60,0.25);
+    background: rgba(255,255,255,0.92); color: #8B5E3C; font-size: 20px; line-height: 1;
+    cursor: pointer; box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+    font-family: inherit; display: flex; align-items: center; justify-content: center;
+  }
+  #pause-btn:active { transform: scale(0.96); }
+  .pause-modal {
+    position: fixed; inset: 0; z-index: 45; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+    background: rgba(60, 40, 30, 0.45); backdrop-filter: blur(6px);
+    pointer-events: auto;
+  }
+  .pause-modal.is-open { display: flex; }
+  .pause-modal-dialog {
+    width: 100%; max-width: 300px; background: linear-gradient(180deg, #FFFDF8 0%, #FFF5E8 100%);
+    border-radius: 24px; padding: 28px 24px; text-align: center;
+    box-shadow: 0 12px 40px rgba(100,60,40,0.25); border: 1px solid rgba(212,165,116,0.4);
+  }
+  .pause-modal-title {
+    font-size: 22px; font-weight: 900; color: #8B5E3C; margin-bottom: 20px;
+  }
+  .btn-pause-option {
+    width: 100%; margin-bottom: 12px; padding: 14px 16px; border-radius: 16px;
+    border: 2px solid rgba(196,139,92,0.45); background: rgba(255,255,255,0.95);
+    color: #8B5E3C; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer;
+  }
+  .btn-pause-resume {
+    width: 100%; margin-top: 8px; padding: 14px 16px; border-radius: 50px; border: none;
+    background: linear-gradient(135deg, #FF9A6C, #FF7043); color: #fff;
+    font-size: 18px; font-weight: 900; font-family: inherit; cursor: pointer;
+    box-shadow: 0 4px 0 #D4603A, 0 6px 20px rgba(255,112,67,0.25);
+  }
+  .btn-pause-resume:active { transform: translateY(2px); box-shadow: 0 2px 0 #D4603A; }
+  #start-screen, #result-screen {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: auto; z-index: 10;
+  }
+  #start-screen { background: linear-gradient(180deg, #FFF8F0 0%, #FFE8D0 100%); }
+  #result-screen { background: rgba(255,245,230,0.95); backdrop-filter: blur(12px); display: none; }
+  .title { font-size: 42px; font-weight: 900; color: #8B5E3C; text-shadow: 0 3px 0 #D4A574, 0 6px 12px rgba(139,94,60,0.15); margin-bottom: 8px; }
+  .subtitle { font-size: 16px; color: #C48B5C; font-weight: 700; margin-bottom: 12px; }
+  .how-to { font-size: 13px; color: #A0785C; margin-bottom: 28px; text-align: center; line-height: 1.7; }
+  .btn {
+    background: linear-gradient(135deg, #FF9A6C, #FF7043); color: #fff; border: none;
+    border-radius: 50px; padding: 16px 48px; font-size: 20px; font-weight: 900;
+    font-family: 'Zen Maru Gothic', sans-serif; cursor: pointer;
+    box-shadow: 0 4px 0 #D4603A, 0 8px 24px rgba(255,112,67,0.3);
+    transition: transform 0.1s, box-shadow 0.1s; pointer-events: auto;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #D4603A, 0 2px 8px rgba(255,112,67,0.3); }
+  .deco-emoji { font-size: 48px; margin-bottom: 16px; animation: float 2s ease-in-out infinite; }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .result-score { font-size: 56px; font-weight: 900; color: #FF7043; text-shadow: 0 2px 0 #D4603A; margin: 8px 0; }
+  .result-detail { font-size: 14px; color: #A0785C; margin-bottom: 4px; }
+  .result-points { font-size: 18px; font-weight: 900; color: #4CAF50; background: rgba(76,175,80,0.1); padding: 8px 24px; border-radius: 20px; margin: 16px 0 32px; }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .shake { animation: shake 0.3s ease-in-out; }
+  #debug-colliders-btn {
+    position: fixed; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(139,94,60,0.35);
+    background: rgba(255,255,255,0.92); color: #8B5E3C; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+  }
+  #debug-colliders-btn.on {
+    background: rgba(200, 235, 255, 0.96); border-color: rgba(40, 120, 160, 0.45); color: #1a6080;
+  }
+  #debug-log-btn {
+    position: fixed; right: max(8px, env(safe-area-inset-right));
+    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 126px);
+    z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(139,94,60,0.35);
+    background: rgba(255,255,255,0.92); color: #8B5E3C; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+  }
+  #debug-hamster-btn {
+    position: fixed; right: max(8px, env(safe-area-inset-right));
+    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 84px);
+    z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(139,94,60,0.35);
+    background: rgba(255,255,255,0.92); color: #8B5E3C; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+  }
+  #debug-hamster-btn.on {
+    background: rgba(230, 245, 220, 0.96); border-color: rgba(100, 150, 80, 0.45); color: #3d5c2e;
+  }
+  #debug-sweet-center-btn {
+    position: fixed; right: max(8px, env(safe-area-inset-right));
+    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 42px);
+    z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(139,94,60,0.35);
+    background: rgba(255,255,255,0.92); color: #8B5E3C; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+  }
+  #debug-sweet-center-btn.on {
+    background: rgba(255, 235, 210, 0.96); border-color: rgba(200, 120, 60, 0.5); color: #8B4513;
+  }
+  /* 右下デバッグピル4つは既定で表示 */
+  #debug-colliders-btn,
+  #debug-log-btn,
+  #debug-hamster-btn,
+  #debug-sweet-center-btn {
+    display: block !important;
+  }
+  html.show-debug-ui #debug-colliders-btn,
+  html.show-debug-ui #debug-log-btn,
+  html.show-debug-ui #debug-hamster-btn,
+  html.show-debug-ui #debug-sweet-center-btn {
+    display: block !important;
+  }
+  .debug-log-modal {
+    position: fixed; inset: 0; z-index: 50; display: none;
+    align-items: center; justify-content: center; padding: 16px;
+    background: rgba(40, 30, 25, 0.5); backdrop-filter: blur(4px);
+    pointer-events: auto;
+  }
+  .debug-log-modal.is-open { display: flex; }
+  .debug-log-dialog {
+    width: 100%; max-width: min(400px, calc(100vw - 24px)); max-height: 88vh;
+    display: flex; flex-direction: column;
+    background: linear-gradient(180deg, #FFFDF8 0%, #FFF5E8 100%);
+    border-radius: 20px; padding: 18px 16px 16px;
+    border: 1px solid rgba(212,165,116,0.4);
+    box-shadow: 0 12px 40px rgba(100,60,40,0.25);
+  }
+  .debug-log-dialog h2 {
+    font-size: 18px; font-weight: 900; color: #8B5E3C; margin-bottom: 10px; text-align: center;
+  }
+  #debug-log-pre {
+    flex: 1; min-height: 100px; max-height: min(58vh, 420px); overflow: auto;
+    margin: 0; padding: 12px;
+    font-size: 11px; line-height: 1.5; font-family: ui-monospace, Menlo, monospace;
+    white-space: pre-wrap; word-break: break-word;
+    background: rgba(245,240,230,0.95); border-radius: 12px; color: #3d3028;
+    border: 1px solid rgba(139,94,60,0.12);
+  }
+  .debug-log-close {
+    margin-top: 12px; width: 100%; padding: 12px 16px; border-radius: 14px; border: none;
+    background: linear-gradient(135deg, #FF9A6C, #FF7043); color: #fff;
+    font-size: 15px; font-weight: 900; font-family: inherit; cursor: pointer;
+    box-shadow: 0 3px 0 #D4603A;
+  }
+  .debug-log-close:active { transform: translateY(2px); box-shadow: 0 1px 0 #D4603A; }
+
+  .wobble-meter-wrap {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: min(340px, calc(100vw - 24px));
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 25;
+    padding: 7px 10px 8px;
+    background: rgba(255,253,248,0.92);
+    border-radius: 12px;
+    border: 1px solid rgba(139,94,60,0.22);
+    box-shadow: 0 4px 14px rgba(100,80,60,0.12);
+  }
+  .wobble-meter-wrap[hidden] {
+    display: none !important;
+  }
+  .wobble-meter-row-top {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    min-height: 1.15em;
+  }
+  .wobble-meter-title {
+    font-size: 11px; font-weight: 900; color: #8B5E3C; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .wobble-meter-track {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(139,94,60,0.12);
+    overflow: hidden;
+    border: 1px solid rgba(139,94,60,0.18);
+  }
+  .wobble-meter-fill {
+    height: 100%;
+    width: 100%;
+    transform-origin: left center;
+    transform: scaleX(0);
+    border-radius: 999px;
+    will-change: transform;
+  }
+  .wobble-meter-danger {
+    font-size: 12px;
+    font-weight: 900;
+    color: #c62828;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    transition: opacity 0.15s ease, color 0.15s ease;
+  }
+
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button type="button" id="debug-log-btn">ログ</button>
+<button type="button" id="debug-hamster-btn" aria-pressed="true">ハムスター ON</button>
+<button type="button" id="debug-sweet-center-btn" aria-pressed="false">落下中央 OFF</button>
+<button type="button" id="debug-colliders-btn" aria-pressed="false">コリダー OFF</button>
+<div id="ui-overlay">
+  <div id="hud" style="display:none;">
+    <div class="hud-left-col">
+      <div class="hud-box"><div class="hud-label">スコア</div><div class="hud-value" id="score-display">0</div></div>
+      <div class="hud-box"><div class="hud-label">つんだ数</div><div class="hud-value" id="count-display">0</div></div>
+    </div>
+    <button type="button" id="pause-btn" aria-label="一時停止">⏸</button>
+  </div>
+  <div id="pause-modal" class="pause-modal" aria-hidden="true">
+    <div class="pause-modal-dialog" role="dialog" aria-labelledby="pause-modal-title">
+      <h2 id="pause-modal-title" class="pause-modal-title">一時停止</h2>
+      <button type="button" class="btn-pause-option" id="pause-sound-toggle">音量: オン</button>
+      <button type="button" class="btn-pause-resume" id="pause-resume">再開</button>
+    </div>
+  </div>
+  <div id="debug-log-modal" class="debug-log-modal" aria-hidden="true">
+    <div class="debug-log-dialog" role="dialog" aria-labelledby="debug-log-title">
+      <h2 id="debug-log-title">崩壊ログ</h2>
+      <pre id="debug-log-pre"></pre>
+      <button type="button" class="debug-log-close" id="debug-log-close">とじる</button>
+    </div>
+  </div>
+  <div id="wobble-meter-wrap" class="wobble-meter-wrap" hidden aria-hidden="true">
+    <div class="wobble-meter-row-top">
+      <span class="wobble-meter-title">ズレメーター</span>
+      <span id="wobble-meter-danger" class="wobble-meter-danger">きけん</span>
+    </div>
+    <div class="wobble-meter-track">
+      <div id="wobble-meter-fill" class="wobble-meter-fill"></div>
+    </div>
+  </div>
+</div>
+<div id="start-screen">
+  <div class="deco-emoji"><img src="item_01.png" width="48" height="48" style="vertical-align:middle"><img src="item_02.png" width="48" height="48" style="vertical-align:middle"><img src="item_03.png" width="48" height="48" style="vertical-align:middle"></div>
+  <div class="title">おやつタイム</div>
+  <div class="subtitle">タップでおやつを積み上げよう！</div>
+  <div class="how-to">🍽 スワイプ or ← → キーでお皿を動かして<br>🍩 おやつをキャッチしよう！<br>👆 タップ or スペース / S / 下キー で落下スピードUP</div>
+  <button class="btn" id="start-btn">はじめる</button>
+</div>
+<div id="result-screen">
+  <div class="deco-emoji">🏆</div>
+  <div class="title" style="font-size:28px;">けっか</div>
+  <div id="result-breakdown" style="font-size:14px; color:#A0785C; line-height:2; margin:8px 0;"></div>
+  <div style="width:60%; height:1px; background:#DDD0C0; margin:8px auto;"></div>
+  <div style="font-size:12px; color:#C48B5C; font-weight:700;">合計スコア</div>
+  <div class="result-score" id="result-score">0</div>
+  <div class="result-detail" id="result-detail"></div>
+  <div class="result-points" id="result-points">+0 pt</div>
+  <button class="btn" id="retry-btn">もういっかい</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+<script>
+(function initDebugUiFromUrl() {
+  try {
+    if (new URLSearchParams(location.search).get('debug') === '1') {
+      document.documentElement.classList.add('show-debug-ui');
+    }
+  } catch (e) { /* noop */ }
+})();
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let W, H, PLATE_Y, PLATE_W, PLATE_H, PLATE_DRAW_OFFSET_Y, UNIT;
+
+/** お皿の見た目だけ下げる（論理位置 PLATE_Y・着地・カメラは不変）。実効オフセット ≈ この値 × (画面幅/420) px */
+const PLATE_DRAW_DOWN_UNIT = 0;
+/** 初回ロード時に表示オン（画面のボタンでいつでも切替可）。`?debugColliders` / `#debugColliders` でも同様に初期オン */
+const DEBUG_SHOW_COLLIDERS = false;
+
+/** false: 従来どおり 1D の getSupportRatio のみ。true: 傾き+塔の揺れを含めた回転矩形の水平投影で支持判定（canvas.rotate と同じ角） */
+const USE_ROTATED_SUPPORT_COLLIDER = true;
+
+let debugCollidersUiOn = false;
+/** デバッグ: 落下中スイーツの X を常に画面中央 (W/2) に固定 */
+let debugSweetCenterFixed = false;
+/** デバッグ: false のときハムスター（トラップ）を出現させない */
+let debugHamsterEnabled = true;
+
+function initDebugCollidersFromEnv() {
+  debugCollidersUiOn = DEBUG_SHOW_COLLIDERS
+    || (typeof location !== 'undefined' && (
+      new URLSearchParams(location.search).has('debugColliders')
+      || location.hash === '#debugColliders'
+      || location.hash.includes('debugColliders')
+    ));
+}
+
+function updateDebugCollidersButton() {
+  const btn = document.getElementById('debug-colliders-btn');
+  if (!btn) return;
+  btn.textContent = debugCollidersUiOn ? 'コリダー ON' : 'コリダー OFF';
+  btn.classList.toggle('on', debugCollidersUiOn);
+  btn.setAttribute('aria-pressed', debugCollidersUiOn ? 'true' : 'false');
+}
+
+function updateDebugSweetCenterButton() {
+  const btn = document.getElementById('debug-sweet-center-btn');
+  if (!btn) return;
+  btn.textContent = debugSweetCenterFixed ? '落下中央 ON' : '落下中央 OFF';
+  btn.classList.toggle('on', debugSweetCenterFixed);
+  btn.setAttribute('aria-pressed', debugSweetCenterFixed ? 'true' : 'false');
+}
+
+function updateDebugHamsterButton() {
+  const btn = document.getElementById('debug-hamster-btn');
+  if (!btn) return;
+  btn.textContent = debugHamsterEnabled ? 'ハムスター ON' : 'ハムスター OFF';
+  btn.classList.toggle('on', debugHamsterEnabled);
+  btn.setAttribute('aria-pressed', debugHamsterEnabled ? 'true' : 'false');
+}
+
+function formatCollapseLogEntries(entries, title) {
+  if (!entries || !entries.length) return '';
+  let out = title ? `${title}\n\n` : '';
+  entries.forEach((e, i) => {
+    out += `--- ${i + 1} ---\n`;
+    if (e.message) out += `${e.message}\n\n`;
+    out += `${JSON.stringify(e, null, 2)}\n\n`;
+  });
+  return out.replace(/\n+$/, '');
+}
+
+function buildDebugLogPanelText() {
+  const parts = [];
+  if (playCollapseLog.length > 0) {
+    parts.push(formatCollapseLogEntries(playCollapseLog, '【このプレイ】'));
+  }
+  if (playCollapseLog.length === 0 && lastSessionCollapseLog.length > 0) {
+    parts.push(formatCollapseLogEntries(lastSessionCollapseLog, '【直前のプレイ】'));
+  }
+  if (parts.length === 0) {
+    return 'まだ崩壊ログがありません。\n塔が崩れると、理由がここに記録されます。';
+  }
+  return parts.join('\n\n————————————\n\n');
+}
+
+function openDebugLogModal() {
+  const pre = document.getElementById('debug-log-pre');
+  const modal = document.getElementById('debug-log-modal');
+  if (pre) pre.textContent = buildDebugLogPanelText();
+  if (modal) {
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function closeDebugLogModal() {
+  const modal = document.getElementById('debug-log-modal');
+  if (modal) {
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  W = Math.min(window.innerWidth, 420);
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  UNIT = W / 420;
+  PLATE_W = 100 * UNIT;
+  PLATE_H = 18 * UNIT;
+  PLATE_Y = H;
+  // 論理着地・カメラは PLATE_Y のまま。お皿の楕円だけ下にずらす量（UNIT 倍＝画面幅基準）
+  PLATE_DRAW_OFFSET_Y = PLATE_DRAW_DOWN_UNIT * UNIT;
+}
+resize();
+
+initDebugCollidersFromEnv();
+updateDebugCollidersButton();
+updateDebugSweetCenterButton();
+updateDebugHamsterButton();
+
+// Preload images
+function loadImage(src) {
+  const img = new Image();
+  img.src = src;
+  return img;
+}
+const IMG_DONUT    = loadImage('item_01.png');
+const IMG_CAKE     = loadImage('item_02.png');
+const IMG_MACARON  = loadImage('item_03.png');
+const IMG_ICECREAM = loadImage('item_04.png');
+const IMG_ENEMY    = loadImage('enemy_01.png');
+const IMG_ENEMY2   = loadImage('enemy_02.png');
+const IMG_STAR     = loadImage('star.png');
+
+const SFX_LAND_SWEET = new Audio('pyon1.mp3');
+SFX_LAND_SWEET.preload = 'auto';
+
+// 崩壊中、複数のお菓子が同時に着地/干渉しても重ねて鳴らせるよう pyon1.mp3 のプール
+const PYON_POOL = [];
+for (let i = 0; i < 8; i++) {
+  const a = new Audio('pyon1.mp3');
+  a.preload = 'auto';
+  PYON_POOL.push(a);
+}
+let pyonPoolIdx = 0;
+let lastPyonMs = 0;
+function playPyonPooled(vol) {
+  if (!sfxEnabled) return;
+  const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  if (now - lastPyonMs < 60) return; // 鳴らしすぎ防止の最小間隔
+  lastPyonMs = now;
+  const a = PYON_POOL[pyonPoolIdx];
+  pyonPoolIdx = (pyonPoolIdx + 1) % PYON_POOL.length;
+  try {
+    a.currentTime = 0;
+    a.volume = Math.max(0, Math.min(1, vol == null ? 1 : vol));
+    a.play().catch(() => {});
+  } catch (e) {}
+}
+
+let sfxEnabled = true;
+let paused = false;
+
+function applySfxVolume() {
+  const v = sfxEnabled ? 1 : 0;
+  SFX_LAND_SWEET.volume = v;
+  SFX_HAMSTER_EAT.volume = v;
+  SFX_STAR.volume = v;
+  SFX_STAR_GET.volume = v;
+  SFX_RAKKA.volume = v;
+}
+
+function playSweetLandSfx() {
+  SFX_LAND_SWEET.currentTime = 0;
+  SFX_LAND_SWEET.play().catch(() => {});
+}
+
+const SFX_HAMSTER_EAT = new Audio('pyon2.mp3');
+SFX_HAMSTER_EAT.preload = 'auto';
+
+function playHamsterEatSfx() {
+  SFX_HAMSTER_EAT.currentTime = 0;
+  SFX_HAMSTER_EAT.play().catch(() => {});
+}
+
+const SFX_STAR = new Audio('star.mp3');
+SFX_STAR.preload = 'auto';
+
+function playStarSfx() {
+  SFX_STAR.loop = true;
+  SFX_STAR.currentTime = 0;
+  SFX_STAR.volume = sfxEnabled ? 1 : 0;
+  SFX_STAR.play().catch(() => {});
+}
+
+const SFX_STAR_GET = new Audio('starget.mp3');
+SFX_STAR_GET.preload = 'auto';
+
+function playStarGetSfx() {
+  SFX_STAR_GET.currentTime = 0;
+  SFX_STAR_GET.volume = sfxEnabled ? 1 : 0;
+  SFX_STAR_GET.play().catch(() => {});
+}
+
+// 崩壊時の落下音。積んだ個数に応じた秒数だけ再生する。
+const SFX_RAKKA = new Audio('rakka.mp3');
+SFX_RAKKA.preload = 'auto';
+let rakkaStopTimer = null;
+// .volume は最大1.0なので、それ以上大きくするため Web Audio のゲインで増幅する
+const RAKKA_GAIN = 3.0; // 増幅倍率（大きくしたいほど上げる）
+let rakkaAudioCtx = null, rakkaGainNode = null, rakkaRouted = false;
+function ensureRakkaBoost() {
+  if (rakkaRouted) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    rakkaAudioCtx = new AC();
+    const src = rakkaAudioCtx.createMediaElementSource(SFX_RAKKA);
+    rakkaGainNode = rakkaAudioCtx.createGain();
+    rakkaGainNode.gain.value = RAKKA_GAIN;
+    src.connect(rakkaGainNode);
+    rakkaGainNode.connect(rakkaAudioCtx.destination);
+    rakkaRouted = true;
+  } catch (e) { /* 失敗時は素の音量で再生 */ }
+}
+function stopRakkaSfx() {
+  if (rakkaStopTimer) { clearTimeout(rakkaStopTimer); rakkaStopTimer = null; }
+  if (!SFX_RAKKA.paused) { SFX_RAKKA.pause(); }
+  SFX_RAKKA.currentTime = 0;
+}
+function playRakkaSfx(count) {
+  stopRakkaSfx();
+  if (!sfxEnabled) return;
+  ensureRakkaBoost();
+  if (rakkaAudioCtx && rakkaAudioCtx.state === 'suspended') rakkaAudioCtx.resume().catch(() => {});
+  // 個数に応じた秒数（1個あたり0.2秒、0.5〜3.0秒にクランプ）
+  const durSec = Math.max(0.5, Math.min(3.0, count * 0.2));
+  SFX_RAKKA.currentTime = 0;
+  SFX_RAKKA.volume = 1;
+  SFX_RAKKA.play().catch(() => {});
+  rakkaStopTimer = setTimeout(() => {
+    if (!SFX_RAKKA.paused) SFX_RAKKA.pause();
+    SFX_RAKKA.currentTime = 0;
+    rakkaStopTimer = null;
+  }, durSec * 1000);
+}
+
+function updatePauseSoundToggleLabel() {
+  const el = document.getElementById('pause-sound-toggle');
+  if (el) el.textContent = sfxEnabled ? '音量: オン' : '音量: オフ';
+}
+
+function setPaused(p) {
+  paused = p;
+  if (p) isDragging = false;
+  const modal = document.getElementById('pause-modal');
+  if (modal) {
+    modal.classList.toggle('is-open', p);
+    modal.setAttribute('aria-hidden', p ? 'false' : 'true');
+  }
+}
+
+function syncHudCountDisplay() {
+  const el = document.getElementById('count-display');
+  if (!el) return;
+  if (state === 'falling') el.textContent = String(stack.length);
+  else if (state === 'collapsed') el.textContent = String(maxStackCount);
+}
+
+function syncPauseBtnVisibility() {
+  const btn = document.getElementById('pause-btn');
+  if (!btn) return;
+  btn.style.visibility = (state === 'falling' || state === 'collapsed') ? 'visible' : 'hidden';
+}
+
+applySfxVolume();
+updatePauseSoundToggleLabel();
+
+// colW: USE_ROTATED_SUPPORT_COLLIDER が false のときは 1D（relX 上の水平線分）。true のときは傾き+揺れ込みの水平投影。mass は崩壊時など。
+const OYATSU_TYPES = [
+  { name: 'ドーナツ',     img: IMG_DONUT,    width: 75, height: 55, stackHeight: 30, colW: 60, mass: 0.6, baseScore: 10, color: '#F4A460' },
+  { name: 'ケーキ',       img: IMG_CAKE,     width: 70, height: 60, stackHeight: 34, colW: 55, mass: 0.8, baseScore: 15, color: '#FFB6C1' },
+  { name: 'マカロン',     img: IMG_MACARON,  width: 65, height: 56, stackHeight: 32, colW: 52, mass: 0.5, baseScore: 18, color: '#F8B0B0' },
+  { name: 'アイスクリーム', img: IMG_ICECREAM, width: 62, height: 62, stackHeight: 36, colW: 48, mass: 1.0, baseScore: 20, color: '#DDA0DD' },
+];
+
+const TRAP_TYPE = { name: 'ハムスター', img: IMG_ENEMY, emoji: '🐹', width: 68, height: 56, stackHeight: 30, colW: 50, mass: 0.4, baseScore: 0, color: '#8B7355', isTrap: true };
+
+// 無敵スター: キャッチすると一定時間タワーが崩れなくなる（積み放題）。スタックには積まれない消費アイテム。
+// 画像アセットが無いので emoji フォールバックで描画（drawOyatsu が img 無し時に emoji を使う）。
+const POWERUP_TYPE = { name: 'スター', img: IMG_STAR, emoji: '⭐', width: 60, height: 60, stackHeight: 0, colW: 46, mass: 0, baseScore: 0, color: '#FFD54A', isPowerup: true };
+/** 無敵時間（秒） */
+const POWERUP_DURATION = 6.0;
+/** 最初にスターが落ちてくる積み数のしきい値 */
+const POWERUP_FIRST_AT = 8;
+/** 以降スターが再出現する積み数間隔 */
+const POWERUP_INTERVAL = 8;
+/** スター取得時、既存スタックを中央整列させるアニメ時間（秒） */
+const ALIGN_DURATION = 0.4;
+/** フィーバー中の連続落下インターバル（ms）。ポンポンと落ちてくるテンポ */
+const POWERUP_RESPAWN_MS = 300;
+/** フィーバーの開始・終了で挟む「一拍の間」（ms）。連続落下の切れ目を分かりやすくする */
+const FEVER_EDGE_PAUSE_MS = 1000;
+/** フィーバー中の落下速度倍率（ポンポン感のためスピードアップ） */
+const POWERUP_FALL_SPEED_MULT = 2.4;
+/** 全体の落下速度スケール（1.2倍ゆっくり = 1/1.2） */
+const FALL_SPEED_SCALE = 1 / 1.2;
+
+// Game state
+let state = 'start';
+let score = 0;
+let stack = [];
+let falling = null;
+let particles = [];
+let floatingTexts = [];
+let comboCount = 0;
+let totalPerfect = 0;
+let totalGood = 0;
+let totalOK = 0;
+let collapseTimer = 0;
+let gameElapsed = 0;
+let maxTowerHeight = 0;
+let maxStackCount = 0;
+let slidingItems = []; // items that slid off the tower
+/** 無敵モードの残り秒数。>0 の間はタワーが崩れない */
+let invincibleTimer = 0;
+/** 次にスターを落とす積み数しきい値 */
+let nextPowerupStack = POWERUP_FIRST_AT;
+/** 次の spawnFalling でスターを出すフラグ */
+let powerupArmed = false;
+/** クラブ演出の強さ 0..1（無敵中に上昇、終了でフェードアウト）。背景の暗さ・BGM音量を駆動 */
+let partyFx = 0;
+/** フィーバー中に踊るハムスターの配置（初回生成して使い回す） */
+let partyDancers = null;
+/** スター取得時の中央整列アニメの残り時間（>0 の間アニメ中） */
+let alignTimer = 0;
+/** フィーバー終了直後、次の落下に一拍の間を入れるフラグ */
+let feverEndPauseArmed = false;
+/** 1プレイあたりの崩壊ログ。`startGame` でクリア。devtools で `window.oyatsuPlayCollapseLog` */
+let playCollapseLog = [];
+if (typeof window !== 'undefined') window.oyatsuPlayCollapseLog = playCollapseLog;
+/** `showResult` 時点のコピー（はじめる直後は直前プレイのログ表示用） */
+let lastSessionCollapseLog = [];
+/** @type {{ worldX: number, worldY: number, t: number, duration: number } | null} */
+let mogumoguFx = null;
+
+// Plate
+let plateX = W / 2;
+let prevPlateX = W / 2;
+let isDragging = false;
+let dragStartX = 0;
+let plateStartX = 0;
+
+// Sway physics（連成チェーン）。各 stack 要素が swayX / swayV を持つ。
+// 旧グローバル（崩壊ログ・崩壊方向の後方互換用に残置）
+let stackSway = 0;
+let swayVel = 0;
+/** 段間カップリングばね（大きいほど硬く・速く上へ伝播） */
+const SWAY_K = 190;
+/** 直立へ戻す復元ばね（小さめ。塔全体の漂流を防ぐ） */
+const SWAY_KG = 11;
+/** 減衰（小さいほど長く揺れる） */
+const SWAY_C = 5.0;
+/** お皿の加速度（ジャーク）を各段へ注入するゲイン。動き出し/停止/反転で塔が遅れて行き過ぎる。
+ *  等速ドラッグでは塔は傾かない（＝実際の積み木に近い） */
+const SWAY_PLATE_DRIVE = 22;
+let swayPrevPlateDelta = 0;
+/** 横ズレ差（せん断px）あたりの傾き角。UNIT で割って解像度非依存に */
+const SWAY_ANGLE_PER_PX = 0.011 / UNIT;
+const SWAY_MAX_X = 64 * UNIT;
+const SWAY_MAX_V = 900 * UNIT;
+const SWAY_SUBSTEPS = 2;
+
+// Camera
+let cameraY = 0;       // how much the view scrolls up
+let targetCameraY = 0;  // smooth target
+let collapseCameraSmoothed = null; // collapse: eased framing target (starts at play cameraY)
+
+// Background
+const bgParticles = [];
+for (let i = 0; i < 15; i++) {
+  bgParticles.push({
+    x: Math.random() * 420, y: Math.random() * 800,
+    size: Math.random() * 3 + 1, speed: Math.random() * 0.3 + 0.1,
+    alpha: Math.random() * 0.4 + 0.1, phase: Math.random() * Math.PI * 2
+  });
+}
+
+window.addEventListener('resize', () => { resize(); if (state === 'start') plateX = W / 2; });
+
+// --- Helpers ---
+function getStackTopWorld() {
+  if (stack.length === 0) return PLATE_Y;
+  const top = stack[stack.length - 1];
+  return top.y - top.type.stackHeight * UNIT;
+}
+
+function getStackTopScreen() {
+  return getStackTopWorld() - cameraY;
+}
+
+// Camera starts moving only after stack height (world px) exceeds H * this fraction
+const CAM_STACK_THRESHOLD_FRAC = 0.35;
+const CAM_LOWER_PER_STACKED_WORLD = 1;
+
+// Collapse camera — adjust framing of flying physics bodies (screenY = worldY - cameraY)
+const CAM_COLLAPSE_TOP_MARGIN_UNIT = 16;
+const CAM_COLLAPSE_TOP_MARGIN_FRAC = 0.04;
+const CAM_COLLAPSE_BOTTOM_MARGIN_UNIT = 28;
+const CAM_COLLAPSE_BOTTOM_MARGIN_FRAC = 0.08;
+// 0..1: 収まるとき camMin〜camMax のどの位置のカメラにするか（0.5=中央）
+const CAM_COLLAPSE_FIT_CENTER_T = 0.35;
+// 崩壊の理想カメラ位置へ寄せる速さ（小さいほどプレイ中カメラからなだらか）
+const CAM_COLLAPSE_IDEAL_SMOOTH = 0.18;
+// 実カメラが target へ追う速さ（プレイ時 0.08 と揃えてシームレスに）
+const CAM_COLLAPSE_FOLLOW_SMOOTH = 0.08;
+const CAM_PLAY_FOLLOW_SMOOTH = 0.08;
+const MISS_TEXT_SCREEN_Y_FRAC = 0.35;
+// ハムスターがスイーツを食べたときの咀嚼オーバーレイ（次スポーン 500ms より短く）
+const MOGUMOGU_DURATION = 0.48;
+const MOGUMOGU_CHEW_AMP = 0.14;
+const MOGUMOGU_CHEW_OMEGA = 24;
+
+function computeTargetCameraY() {
+  const stackTopWorld = getStackTopWorld();
+  const plateAnchorScreenY = H * 0.82;
+  const stackTopScreenMin = Math.max(40 * UNIT, 0.06 * H);
+  const camPlate = PLATE_Y - plateAnchorScreenY;
+  const camTop = stackTopWorld - stackTopScreenMin;
+  const stackedDepth = Math.max(0, PLATE_Y - stackTopWorld);
+  const stackThresholdWorld = H * CAM_STACK_THRESHOLD_FRAC;
+  const depthOverThreshold = Math.max(0, stackedDepth - stackThresholdWorld);
+  let cam = camPlate - depthOverThreshold * CAM_LOWER_PER_STACKED_WORLD;
+  cam = Math.min(cam, camTop);
+  return cam;
+}
+
+// Fit physics bodies in view during collapse (screenY = worldY - cameraY)
+function computeCollapseCameraY() {
+  if (!physicsBodies.length) return 0;
+  let minTop = Infinity;
+  let maxBottom = -Infinity;
+  for (const entry of physicsBodies) {
+    const body = entry.body;
+    const hh = entry.type.height * UNIT * 0.5;
+    minTop = Math.min(minTop, body.position.y - hh);
+    maxBottom = Math.max(maxBottom, body.position.y + hh);
+  }
+  const topM = Math.max(CAM_COLLAPSE_TOP_MARGIN_UNIT * UNIT, CAM_COLLAPSE_TOP_MARGIN_FRAC * H);
+  const botM = Math.max(CAM_COLLAPSE_BOTTOM_MARGIN_UNIT * UNIT, CAM_COLLAPSE_BOTTOM_MARGIN_FRAC * H);
+  const camMax = minTop - topM;
+  const camMin = maxBottom - (H - botM);
+  if (camMin <= camMax) {
+    return camMin + (camMax - camMin) * CAM_COLLAPSE_FIT_CENTER_T;
+  }
+  return camMin;
+}
+
+function getTotalOffset() {
+  let total = 0;
+  for (const s of stack) total += s.offsetX;
+  return total;
+}
+
+/** 横ズレ崩壊判定と UI 共通: |offsetX 合計| と閾値 max(90U−4U×段, 25U) */
+function getWobbleDangerMetrics() {
+  const wobble = Math.abs(getTotalOffset());
+  const thresholdUsed = Math.max(60 * UNIT - stack.length * 5 * UNIT, 18 * UNIT);
+  const ratio = thresholdUsed > 1e-9 ? wobble / thresholdUsed : 0;
+  const remaining = Math.max(0, thresholdUsed - wobble);
+  return {
+    wobble,
+    thresholdUsed,
+    ratio,
+    remaining,
+    stackLength: stack.length,
+  };
+}
+
+// 1D overlap length between two segments [a0,a1] and [b0,b1]
+function overlapLen(a0, a1, b0, b1) {
+  return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+}
+
+// 上段・下段の colW 線分（各中心=relX）の X 方向重なりを上幅で正規化。縦方向は未使用。
+// How well is item at relX supported by the item (or plate) below it?
+// Returns ratio 0..1  (1 = fully supported, 0 = no overlap at all)
+function getSupportRatio(upperRelX, upperColW, lowerRelX, lowerColW) {
+  const uHalf = upperColW * UNIT * 0.5;
+  const lHalf = lowerColW * UNIT * 0.5;
+  const uLeft  = upperRelX - uHalf;
+  const uRight = upperRelX + uHalf;
+  const lLeft  = lowerRelX - lHalf;
+  const lRight = lowerRelX + lHalf;
+  const overlap = overlapLen(uLeft, uRight, lLeft, lRight);
+  const upperW = uHalf * 2;
+  return upperW > 0 ? overlap / upperW : 0;
+}
+
+// drawOyatsu の ctx.rotate(angle) と同じ（canvas 2D 標準）
+function colliderCornerWorldXRel(cxRel, lx, ly, angleRad) {
+  const c = Math.cos(angleRad);
+  const s = Math.sin(angleRad);
+  return cxRel + lx * c - ly * s;
+}
+
+function horizontalSpanRelRotated(cxRel, type, angleRad) {
+  const w = type.colW * UNIT;
+  const h = type.height * UNIT;
+  const hw = w * 0.5;
+  const hh = h * 0.5;
+  const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+  let xmin = Infinity;
+  let xmax = -Infinity;
+  for (let k = 0; k < corners.length; k++) {
+    const wx = colliderCornerWorldXRel(cxRel, corners[k][0], corners[k][1], angleRad);
+    if (wx < xmin) xmin = wx;
+    if (wx > xmax) xmax = wx;
+  }
+  const span = xmax - xmin;
+  return { xmin, xmax, span };
+}
+
+// 各段は自分の横ズレ swayX（ワールドpx）と速度 swayV を持つ連成チェーン。
+// 描画・支持判定・崩壊スナップショットはすべてこの2関数を唯一の参照元にする。
+function stackItemSwayDxAt(i) {
+  const s = stack[i];
+  return s && s.swayX != null ? s.swayX : 0;
+}
+
+// 段の傾きは「直下との横ズレ差（せん断）」から生まれる。連成の自然な結果。
+function stackItemSwayAngleAt(i) {
+  const s = stack[i];
+  if (!s || s.swayX == null) return 0;
+  const below = i > 0 && stack[i - 1].swayX != null ? stack[i - 1].swayX : 0;
+  return (s.swayX - below) * SWAY_ANGLE_PER_PX;
+}
+
+/** 各段に swayX/swayV が無ければ初期化（着地直後の段など） */
+function ensureSwayState() {
+  for (const s of stack) {
+    if (s.swayX == null) { s.swayX = 0; s.swayV = 0; }
+  }
+}
+
+/**
+ * 連成ばねチェーンを1フレーム進める。段0は皿（swayX=0）に、各段は直下/直上と
+ * ばね結合。皿の移動 plateDelta は全段へ慣性インパルスとして注入され、上へ遅れて伝播する。
+ */
+function updateStackSway(dt, plateDelta) {
+  const n = stack.length;
+  if (n === 0) { swayPrevPlateDelta = plateDelta; return; }
+  ensureSwayState();
+  // 皿の加速度（ジャーク）を全段へ慣性インパルスとして注入（等速では傾かない）
+  const jerk = plateDelta - swayPrevPlateDelta;
+  swayPrevPlateDelta = plateDelta;
+  for (const s of stack) s.swayV -= jerk * SWAY_PLATE_DRIVE;
+
+  const h = dt / SWAY_SUBSTEPS;
+  for (let step = 0; step < SWAY_SUBSTEPS; step++) {
+    // 加速度を一括計算（Jacobi）してから積分
+    for (let i = 0; i < n; i++) {
+      const s = stack[i];
+      const below = i > 0 ? stack[i - 1].swayX : 0; // 段0の「下」は皿(=0)
+      let acc = -SWAY_K * (s.swayX - below) - SWAY_KG * s.swayX - SWAY_C * s.swayV;
+      if (i < n - 1) acc -= SWAY_K * (s.swayX - stack[i + 1].swayX);
+      s._swayAcc = acc;
+    }
+    for (let i = 0; i < n; i++) {
+      const s = stack[i];
+      s.swayV += s._swayAcc * h;
+      if (s.swayV > SWAY_MAX_V) s.swayV = SWAY_MAX_V;
+      else if (s.swayV < -SWAY_MAX_V) s.swayV = -SWAY_MAX_V;
+      s.swayX += s.swayV * h;
+      if (s.swayX > SWAY_MAX_X) { s.swayX = SWAY_MAX_X; s.swayV *= -0.2; }
+      else if (s.swayX < -SWAY_MAX_X) { s.swayX = -SWAY_MAX_X; s.swayV *= -0.2; }
+      if (!Number.isFinite(s.swayX) || !Number.isFinite(s.swayV)) { s.swayX = 0; s.swayV = 0; }
+    }
+  }
+
+  // 後方互換: 崩壊方向/強度の参照用に最上段の正規化値を残す
+  const top = stack[n - 1];
+  stackSway = top.swayX / SWAY_MAX_X;
+  swayVel = top.swayV / SWAY_MAX_X;
+}
+
+/** プレイ用支持率。USE_ROTATED_SUPPORT_COLLIDER が false なら従来の 1D のみ */
+function supportInPlay(
+  upperRelX, upperType, upperAngleRad, upperSwayDx,
+  lowerRelX, lowerType, lowerAngleRad, lowerSwayDx, lowerIsPlate
+) {
+  if (!USE_ROTATED_SUPPORT_COLLIDER) {
+    const lowerColW = lowerIsPlate ? (PLATE_W / UNIT) : lowerType.colW;
+    return getSupportRatio(upperRelX, upperType.colW, lowerRelX, lowerColW);
+  }
+  const ucx = upperRelX + upperSwayDx;
+  const uAng = upperAngleRad;
+  const us = horizontalSpanRelRotated(ucx, upperType, uAng);
+  let lxmin;
+  let lxmax;
+  if (lowerIsPlate) {
+    lxmin = -PLATE_W * 0.5;
+    lxmax = PLATE_W * 0.5;
+  } else {
+    const lcx = lowerRelX + lowerSwayDx;
+    const ls = horizontalSpanRelRotated(lcx, lowerType, lowerAngleRad);
+    lxmin = ls.xmin;
+    lxmax = ls.xmax;
+  }
+  const ov = overlapLen(us.xmin, us.xmax, lxmin, lxmax);
+  return us.span > 1e-6 ? ov / us.span : 0;
+}
+
+/**
+ * supportInPlay と同じ幾何で、上下の水平投影の重なり区間の中心 X（お皿中心相対）。
+ * 重なりがなければ null。
+ */
+function supportOverlapCenterRelX(
+  upperRelX, upperType, upperAngleRad, upperSwayDx,
+  lowerRelX, lowerType, lowerAngleRad, lowerSwayDx, lowerIsPlate
+) {
+  if (!USE_ROTATED_SUPPORT_COLLIDER) {
+    const lowerColW = lowerIsPlate ? (PLATE_W / UNIT) : lowerType.colW;
+    const uHalf = upperType.colW * UNIT * 0.5;
+    const lHalf = lowerColW * UNIT * 0.5;
+    const uLeft = upperRelX - uHalf;
+    const uRight = upperRelX + uHalf;
+    const lLeft = lowerRelX - lHalf;
+    const lRight = lowerRelX + lHalf;
+    const lo = Math.max(uLeft, lLeft);
+    const hi = Math.min(uRight, lRight);
+    if (hi <= lo) return null;
+    return (lo + hi) * 0.5;
+  }
+  const ucx = upperRelX + upperSwayDx;
+  const us = horizontalSpanRelRotated(ucx, upperType, upperAngleRad);
+  let lxmin;
+  let lxmax;
+  if (lowerIsPlate) {
+    lxmin = -PLATE_W * 0.5;
+    lxmax = PLATE_W * 0.5;
+  } else {
+    const lcx = lowerRelX + lowerSwayDx;
+    const ls = horizontalSpanRelRotated(lcx, lowerType, lowerAngleRad);
+    lxmin = ls.xmin;
+    lxmax = ls.xmax;
+  }
+  const lo = Math.max(us.xmin, lxmin);
+  const hi = Math.min(us.xmax, lxmax);
+  if (hi <= lo) return null;
+  return (lo + hi) * 0.5;
+}
+
+// プレート面から順に各段の足元 y を連鎖（途中 splice 後の縦ズレを解消）
+function rebuildStackFootYs() {
+  const landLift = LAND_SURFACE_LIFT_MULT * UNIT;
+  let curSurface = PLATE_Y - landLift;
+  for (let i = 0; i < stack.length; i++) {
+    const s = stack[i];
+    s.y = curSurface;
+    curSurface = s.y - s.type.stackHeight * UNIT - landLift;
+  }
+}
+
+/**
+ * 崩壊条件を評価。問題なければ null、崩れるなら理由オブジェクト。
+ * @returns {null | { kind: string, message: string, [k: string]: unknown }}
+ */
+function checkCollapse() {
+  // 左右移動による stackSway は含めない（移動だけでは崩れない）
+  const { wobble, thresholdUsed, stackLength } = getWobbleDangerMetrics();
+  if (wobble > thresholdUsed) {
+    return {
+      kind: 'wobble',
+      message: `各段の横ズレ offsetX の合計が大きすぎる（|合計|=${wobble.toFixed(1)} ＞ 閾値=${thresholdUsed.toFixed(1)}、段数=${stackLength}）`,
+      wobble: +wobble.toFixed(2),
+      threshold: +thresholdUsed.toFixed(2),
+      stackLength,
+    };
+  }
+
+  // Collision-based: check each stacked item's support from the one below
+  for (let i = 1; i < stack.length; i++) {
+    const upper = stack[i];
+    const lower = stack[i - 1];
+    const uAng = (upper.angle || 0) + stackItemSwayAngleAt(i);
+    const lAng = (lower.angle || 0) + stackItemSwayAngleAt(i - 1);
+    const support = supportInPlay(
+      upper.relX, upper.type, uAng, stackItemSwayDxAt(i),
+      lower.relX, lower.type, lAng, stackItemSwayDxAt(i - 1),
+      false
+    );
+    // Less than 30% overlap → topple
+    if (support < 0.3) {
+      return {
+        kind: 'support_between',
+        message: `段${i}（${upper.type.name}）が下段（${lower.type.name}）に対して支持が不足（支持率=${support.toFixed(3)} ＜ 0.3）`,
+        tierUpper: i,
+        upperName: upper.type.name,
+        lowerName: lower.type.name,
+        upperRelX: +upper.relX.toFixed(2),
+        lowerRelX: +lower.relX.toFixed(2),
+        support: +support.toFixed(4),
+        needSupport: 0.3,
+      };
+    }
+  }
+
+  // Also check bottom item vs plate center (relX=0)
+  if (stack.length > 0) {
+    const bottom = stack[0];
+    const bAng = (bottom.angle || 0) + stackItemSwayAngleAt(0);
+    const support = supportInPlay(
+      bottom.relX, bottom.type, bAng, stackItemSwayDxAt(0),
+      0, bottom.type, 0, 0,
+      true
+    );
+    if (support < 0.35) {
+      return {
+        kind: 'support_plate',
+        message: `最下段（${bottom.type.name}）がお皿に対して支持が不足（支持率=${support.toFixed(3)} ＜ 0.35）`,
+        bottomName: bottom.type.name,
+        bottomRelX: +bottom.relX.toFixed(2),
+        support: +support.toFixed(4),
+        needSupport: 0.35,
+      };
+    }
+  }
+  return null;
+}
+
+function spawnFalling() {
+  // 落下速度は積み数に依存せず一定（個数で速くならない）
+  const baseSpeed = 8;
+  const margin = 40 * UNIT;
+  const maxSpread = (W / 2) - margin;
+  // 落下位置のブレ（やさしめ）：最大でも画面半分の 55%、30個で最大、序盤は緩やか
+  const spreadT = Math.min(stack.length / 30, 1);
+  const spread = maxSpread * 0.55 * (spreadT * spreadT);
+  // フィーバー中は中央固定で落とす（落下中央デバッグ時も同様）
+  const x = (invincibleTimer > 0 || debugSweetCenterFixed) ? W / 2 : (W / 2 + (Math.random() - 0.5) * 2 * spread);
+
+  // 無敵スターの出番: armed なら最優先で落とす（無敵中はさらに重ねない）
+  if (powerupArmed && invincibleTimer <= 0) {
+    powerupArmed = false;
+    const pSpeed = (baseSpeed + Math.random()) * UNIT * FALL_SPEED_SCALE;
+    falling = { type: POWERUP_TYPE, x, screenY: -60, speed: pSpeed, landed: false };
+    return;
+  }
+
+  // Trap chance: 積み3個から上昇、最大約42%（無敵中はトラップを出さない）
+  let type;
+  const trapChance = stack.length >= 3 ? Math.min((stack.length - 2) * 0.07, 0.42) : 0;
+  if (debugHamsterEnabled && invincibleTimer <= 0 && Math.random() < trapChance) {
+    type = TRAP_TYPE;
+  } else {
+    type = OYATSU_TYPES[Math.floor(Math.random() * OYATSU_TYPES.length)];
+  }
+
+  // 落下速度：アイテム毎の重さ補正を撤廃して一律。全体を少し遅く（1.2倍ゆっくり）
+  let speed = (baseSpeed + Math.random()) * UNIT * FALL_SPEED_SCALE;
+  if (invincibleTimer > 0) speed *= POWERUP_FALL_SPEED_MULT; // フィーバー中は速く落とす
+
+  falling = { type, x, screenY: -60, speed, landed: false };
+}
+
+function addFloatingText(x, screenY, text, color, pinY) {
+  floatingTexts.push({ x, screenY, text, color, life: 1, pinY: !!pinY });
+}
+
+function addParticles(x, screenY, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, screenY, vx: (Math.random() - 0.5) * 4,
+      vy: -Math.random() * 5 - 1, size: Math.random() * 4 + 2,
+      color, life: 1,
+    });
+  }
+}
+
+// Physics constants
+const GRAVITY = 980;       // px/s² (scaled by UNIT later)
+const BOUNCE_RESTITUTION = 0.35;
+const FRICTION = 0.6;
+const ANGULAR_DAMPING = 0.92;
+// Landing Y is this much higher (smaller world Y) than the nominal stack top / plate plane
+const LAND_SURFACE_LIFT_MULT = 2;
+/** 横ズレ合計・傾き用。難易度は落下位置ベース（大きいほどシビア） */
+const LAND_OFFSET_X_SCALE = 0.7;
+/** 着地時の X スナップ強度。0=落下位置そのまま、1=下との重なり中心へフルスナップ（従来動作） */
+const LAND_SNAP_STRENGTH = 0;
+/** 崩壊フェーズの演出時間（秒）。崩れてからこの秒数でリザルトを出す */
+const COLLAPSE_DURATION = 3.0;
+/** テーブル床（drawPlate の影付近）— PLATE_Y からの UNIT オフセット */
+const TABLE_FLOOR_OFFSET_UNIT = 12;
+/** 崩壊 Matter: 1フレームあたりの最大 Y 移動（UNIT、60fps 基準で dt スケール） */
+const COLLAPSE_MAX_DY_PER_STEP_UNIT = 22;
+const COLLAPSE_MAX_SPEED_UNIT = 52;
+const COLLAPSE_MAX_ANGULAR = 0.28;
+const COLLAPSE_PHYSICS_SUBSTEPS = 3;
+/** 崩壊時の最低限の「倒れる勢い」。整列タワーでも確実に崩れて見えるための下限。 */
+const MIN_COLLAPSE_SWAY = 0.55;
+const COLLAPSE_DRAW_FOOT_LERP = 18;
+let lastFrameDt = 1 / 60;
+
+let matterEngine = null;
+/** 崩壊中、プレイヤーのお皿位置に追従する可動コライダー（押して干渉できる） */
+let matterPlateBody = null;
+/** Matter 地面の上面（世界座標 Y）。setupMatterCollapse で設定 */
+let matterGroundTopY = 0;
+/** @type {{ body: object, type: object }[]} */
+let physicsBodies = [];
+
+function destroyMatterWorld() {
+  if (matterEngine && typeof Matter !== 'undefined') {
+    Matter.World.clear(matterEngine.world);
+    Matter.Engine.clear(matterEngine);
+    matterEngine = null;
+  }
+  matterGroundTopY = 0;
+  matterPlateBody = null;
+  physicsBodies = [];
+}
+
+// 崩壊スナップショットの各段が持つ swayX から、崩壊直前の見た目の横ズレ・傾きを再現。
+// プレイ中の連成チェーンの状態をそのまま物理初期姿勢へ引き継ぐ（揺れ→崩壊が連続）。
+function swayDxForSnapshot(snapshot, i) {
+  const s = snapshot[i];
+  return s && s.swayX != null ? s.swayX : 0;
+}
+
+function swayAngleForSnapshot(snapshot, i) {
+  const s = snapshot[i];
+  if (!s || s.swayX == null) return 0;
+  const below = i > 0 && snapshot[i - 1].swayX != null ? snapshot[i - 1].swayX : 0;
+  return (s.swayX - below) * SWAY_ANGLE_PER_PX;
+}
+
+function getCollapseToppleDir() {
+  const off = getTotalOffset();
+  if (Math.abs(off) > 0.5 * UNIT) return off > 0 ? 1 : -1;
+  return stackSway >= 0 ? 1 : -1;
+}
+
+/** 崩壊 Matter 用コライダー（プレイ中の stackHeight / colW と一致させる） */
+function matterColliderSize(type) {
+  return {
+    w: Math.max(type.colW * UNIT, 8),
+    h: Math.max(type.stackHeight * UNIT, 8),
+  };
+}
+
+function matterBodyFootY(body, type) {
+  const { h } = matterColliderSize(type);
+  return body.position.y + h * 0.5;
+}
+
+function getTableFloorWorldY() {
+  if (matterGroundTopY) return matterGroundTopY;
+  return PLATE_Y + TABLE_FLOOR_OFFSET_UNIT * UNIT;
+}
+
+function getPlateSurfaceWorldY() {
+  return PLATE_Y - LAND_SURFACE_LIFT_MULT * UNIT;
+}
+
+function isOverPlateWorldX(worldX) {
+  return Math.abs(worldX - plateX) < PLATE_W * 0.52;
+}
+
+function collapseBodyCollisions(body) {
+  if (!matterEngine || typeof Matter === 'undefined') return [];
+  const others = matterEngine.world.bodies.filter((b) => b !== body);
+  return Matter.Query.collides(body, others);
+}
+
+function collapseHasSupportBelow(body) {
+  for (const col of collapseBodyCollisions(body)) {
+    const other = col.bodyA === body ? col.bodyB : col.bodyA;
+    if (other.label === 'ground' || other.label === 'plate') return true;
+    if (other.label === 'sweet' && other.position.y > body.position.y + 0.5 * UNIT) return true;
+  }
+  return false;
+}
+
+function isCollapseBodyAtRest(body) {
+  return body.speed < 0.2 * UNIT && Math.abs(body.angularVelocity) < 0.1;
+}
+
+/** 足元がテーブル床・お皿面・他のお菓子の上 */
+function isCollapseBodyOnGround(body, type) {
+  const foot = matterBodyFootY(body, type);
+  const floorY = getTableFloorWorldY();
+  const plateY = getPlateSurfaceWorldY();
+  if (foot >= floorY - 8 * UNIT && foot <= floorY + 32 * UNIT) return true;
+  if (isOverPlateWorldX(body.position.x) && foot <= plateY + 10 * UNIT && foot >= plateY - 40 * UNIT) return true;
+  if (isCollapseBodyAtRest(body) && collapseHasSupportBelow(body)) return true;
+  return false;
+}
+
+/** 崩壊描画用の足元 Y（床・お皿面にスナップ） */
+function getCollapseDrawFootWorldY(body, type) {
+  const foot = matterBodyFootY(body, type);
+  const { h: phyH } = matterColliderSize(type);
+  const spritePad = (type.height * UNIT - phyH) * 0.92;
+  const floorY = getTableFloorWorldY();
+  const plateY = getPlateSurfaceWorldY();
+  const onFloor = foot >= floorY - 10 * UNIT && foot <= floorY + 36 * UNIT;
+  const onPlate = isOverPlateWorldX(body.position.x)
+    && foot <= plateY + 10 * UNIT
+    && foot >= plateY - 40 * UNIT
+    && !onFloor;
+  if (onFloor) return foot >= floorY - 0.5 * UNIT ? floorY : foot;
+  if (onPlate) return foot >= plateY - 0.5 * UNIT ? plateY : foot;
+  if (isCollapseBodyAtRest(body) && collapseHasSupportBelow(body)) {
+    return foot - spritePad * 0.35;
+  }
+  return foot - spritePad;
+}
+
+function setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, reason) {
+  destroyMatterWorld();
+  if (typeof Matter === 'undefined') {
+    console.warn('[oyatsu] Matter.js が読み込めません。崩壊演出をスキップします。');
+    return;
+  }
+
+  const { Engine, Bodies, Body, Composite } = Matter;
+  const n = stackSnapshot.length;
+  if (n === 0) return;
+
+  // 崩壊判定が出たら見た目も必ず倒れるよう、倒れる勢いに下限を設ける。
+  // ほぼ整列したタワー（途中刺さり等）でも sway≈0 で動かず固まるのを防ぐ。
+  const effSway = Math.max(swayStrength, MIN_COLLAPSE_SWAY);
+  // 途中刺さり崩壊は「刺さった段から上が割れて落ちる」ので、その段以上を強めに押す。
+  const wedgeIdx = (reason && reason.kind === 'wedged_mid_stack' && typeof reason.insertIdx === 'number')
+    ? reason.insertIdx : -1;
+
+  matterEngine = Engine.create({
+    // 早期に sleep して積まれたまま固まらないよう、崩壊中は sleep させない。
+    enableSleeping: false,
+    positionIterations: 6,
+    velocityIterations: 6,
+    constraintIterations: 2,
+  });
+  // 横方向の重力を少し強めにして、確実に同じ向きへ倒れ続けるようにする。
+  matterEngine.world.gravity.x = toppleDir * 0.16 * UNIT;
+  matterEngine.world.gravity.y = 2.8;
+  matterEngine.world.gravity.scale = 0.00115 * UNIT;
+
+  const staticBodies = [];
+  const groundHalfH = 32 * UNIT;
+  matterGroundTopY = PLATE_Y + TABLE_FLOOR_OFFSET_UNIT * UNIT;
+  const groundCenterY = matterGroundTopY + groundHalfH;
+  staticBodies.push(Bodies.rectangle(W * 0.5, groundCenterY, W * 4, groundHalfH * 2, {
+    isStatic: true,
+    friction: 0.92,
+    restitution: 0.05,
+    label: 'ground',
+  }));
+  const plateSurfY = getPlateSurfaceWorldY();
+  const plateBodyH = 6 * UNIT;
+  // お皿は崩壊後もプレイヤーが操作でき、押すとアイテムに干渉して動かせる。
+  // 当たると反発するよう restitution を高めに。stepMatterCollapse で plateX に追従させる。
+  const plateBody = Bodies.rectangle(plateX, plateSurfY + plateBodyH * 0.5, PLATE_W * 0.92, plateBodyH, {
+    isStatic: true,
+    friction: 0.8,
+    restitution: 0.5,
+    label: 'plate',
+    chamfer: { radius: 1 * UNIT },
+  });
+  matterPlateBody = plateBody;
+  staticBodies.push(plateBody);
+  // 左右の壁は撤去。勢いのあるお菓子は画面外へ飛び出せる。
+
+  const dynamicBodies = [];
+  for (let i = 0; i < n; i++) {
+    const s = stackSnapshot[i];
+    const type = s.type;
+    const { w, h } = matterColliderSize(type);
+    const footX = plateX + s.relX + swayDxForSnapshot(stackSnapshot, i);
+    const footY = s.y;
+    const angle = (s.angle || 0) + swayAngleForSnapshot(stackSnapshot, i);
+    const cx = footX;
+    const cy = footY - h * 0.5;
+
+    const body = Bodies.rectangle(cx, cy, w, h, {
+      angle,
+      friction: 0.55,
+      frictionStatic: 0.65,
+      frictionAir: 0.018,
+      restitution: 0.06,
+      slop: 0.02,
+      chamfer: { radius: Math.min(1.5 * UNIT, w * 0.04, h * 0.04) },
+      label: 'sweet',
+    });
+    const mass = type.mass || 1;
+    Body.setMass(body, mass * 12 * UNIT);
+    Body.setInertia(body, body.inertia * (0.85 + mass * 0.15));
+
+    const heightRatio = (i + 1) / n;
+    const tier = heightRatio * heightRatio;
+    // 下限つきの倒れインパルス。最小でも上段がしっかり倒れる。
+    let impulseScale = (0.7 + effSway * 1.0) * UNIT;
+    // 途中刺さり：刺さった段以上を強めに押し出して自然に割れて崩す。
+    if (wedgeIdx >= 0 && i >= wedgeIdx) impulseScale *= 1.6;
+    // 崩壊直前の連成チェーンの速度を引き継ぐ。swayV は px/秒なので 1/60 でステップ速度へ
+    // 変換し、控えめに（吹っ飛び防止に上限クランプ）。
+    const swayCarryVx = Math.max(-2.5 * UNIT, Math.min(2.5 * UNIT, (s.swayV || 0) * (1 / 60) * 0.35));
+    Body.setVelocity(body, {
+      x: toppleDir * tier * impulseScale * (0.7 + Math.random() * 0.25) + swayCarryVx,
+      y: -tier * impulseScale * 0.12 * (0.5 + Math.random() * 0.3),
+    });
+    Body.setAngularVelocity(body, toppleDir * tier * (0.07 + effSway * 0.06) * (0.8 + Math.random() * 0.35));
+
+    dynamicBodies.push(body);
+    const initFoot = matterBodyFootY(body, type);
+    physicsBodies.push({
+      body,
+      type,
+      smoothDrawFootY: initFoot,
+      prevBodyX: body.position.x,
+      prevBodyY: body.position.y,
+    });
+  }
+
+  Composite.add(matterEngine.world, staticBodies.concat(dynamicBodies));
+
+  // 崩壊中の効果音：崩れる着地音は鳴らさない（複数回鳴って煩い・重いため）。
+  // お皿で蹴散らして干渉したときだけ pyon1.mp3 を鳴らす（全体の最小間隔で間引き）。
+  Matter.Events.on(matterEngine, 'collisionStart', (ev) => {
+    for (const pair of ev.pairs) {
+      let sweet = null, otherBody = null;
+      if (pair.bodyA.label === 'sweet') { sweet = pair.bodyA; otherBody = pair.bodyB; }
+      else if (pair.bodyB.label === 'sweet') { sweet = pair.bodyB; otherBody = pair.bodyA; }
+      if (!sweet || otherBody.label !== 'plate') continue;
+      // お皿自体が動いている＝プレイヤーが蹴散らした時だけ鳴らす。
+      // 崩壊の勢いだけ（お皿が静止）では鳴らさない。
+      const ov = otherBody.velocity || { x: 0, y: 0 };
+      const plateSpeed = Math.hypot(ov.x, ov.y);
+      if (plateSpeed < 2 * UNIT) continue;
+      const spd = Math.hypot(sweet.velocity.x - ov.x, sweet.velocity.y - ov.y);
+      if (spd < 1.4 * UNIT) continue;
+      playPyonPooled(Math.min(1, 0.4 + spd / (10 * UNIT)));
+    }
+  });
+}
+
+function clampCollapseBodyAfterStep(entry, stepDt) {
+  const body = entry.body;
+  const scale = stepDt * 60;
+  const maxDy = COLLAPSE_MAX_DY_PER_STEP_UNIT * UNIT * scale;
+
+  if (entry.prevBodyY != null) {
+    const dy = body.position.y - entry.prevBodyY;
+    if (Math.abs(dy) > maxDy) {
+      const y = entry.prevBodyY + Math.sign(dy) * maxDy;
+      Matter.Body.setPosition(body, { x: body.position.x, y });
+      Matter.Body.setVelocity(body, {
+        x: body.velocity.x * 0.55,
+        y: body.velocity.y * 0.15,
+      });
+    }
+  }
+  entry.prevBodyX = body.position.x;
+  entry.prevBodyY = body.position.y;
+
+  const maxV = COLLAPSE_MAX_SPEED_UNIT * UNIT;
+  const sp = body.speed;
+  if (sp > maxV) {
+    const k = maxV / sp;
+    Matter.Body.setVelocity(body, { x: body.velocity.x * k, y: body.velocity.y * k });
+  }
+  const maxVy = COLLAPSE_MAX_SPEED_UNIT * 0.65 * UNIT;
+  if (Math.abs(body.velocity.y) > maxVy) {
+    Matter.Body.setVelocity(body, {
+      x: body.velocity.x,
+      y: Math.sign(body.velocity.y) * maxVy,
+    });
+  }
+  const av = body.angularVelocity;
+  if (Math.abs(av) > COLLAPSE_MAX_ANGULAR) {
+    Matter.Body.setAngularVelocity(body, Math.sign(av) * COLLAPSE_MAX_ANGULAR);
+  }
+}
+
+function stepMatterCollapse(dt) {
+  if (!matterEngine) return;
+  const frameDt = Math.min(dt, 0.05);
+  const sub = COLLAPSE_PHYSICS_SUBSTEPS;
+  const stepDt = frameDt / sub;
+  const stepMs = stepDt * 1000;
+  for (let i = 0; i < sub; i++) {
+    // お皿をプレイヤーの操作位置（plateX）へ追従させ、アイテムを押せるようにする。
+    // 移動量から速度を与えることで、押し出し＋反発が自然になる。
+    if (matterPlateBody) {
+      const prevX = matterPlateBody.position.x;
+      Matter.Body.setPosition(matterPlateBody, { x: plateX, y: matterPlateBody.position.y });
+      Matter.Body.setVelocity(matterPlateBody, { x: (plateX - prevX) / stepDt, y: 0 });
+    }
+    Matter.Engine.update(matterEngine, stepMs);
+    for (const entry of physicsBodies) {
+      clampCollapseBodyAfterStep(entry, stepDt);
+    }
+  }
+}
+
+function getCollapseSmoothDrawFootY(entry, body, type) {
+  const target = getCollapseDrawFootWorldY(body, type);
+  if (entry.smoothDrawFootY == null) entry.smoothDrawFootY = target;
+  const dt = lastFrameDt;
+  const maxStep = COLLAPSE_MAX_DY_PER_STEP_UNIT * UNIT * dt * 60;
+  let next = entry.smoothDrawFootY + (target - entry.smoothDrawFootY) * Math.min(1, COLLAPSE_DRAW_FOOT_LERP * dt);
+  const step = next - entry.smoothDrawFootY;
+  if (Math.abs(step) > maxStep) next = entry.smoothDrawFootY + Math.sign(step) * maxStep;
+  entry.smoothDrawFootY = next;
+  return entry.smoothDrawFootY;
+}
+
+/** 崩壊中にコンソールから `oyatsuCollapseDebug()` で接地状態を確認 */
+function oyatsuCollapseDebug() {
+  if (state !== 'collapsed' || !physicsBodies.length) {
+    console.log('[oyatsuCollapseDebug] 崩壊中のみ利用できます');
+    return;
+  }
+  const floorY = getTableFloorWorldY();
+  const plateY = getPlateSurfaceWorldY();
+  console.table(physicsBodies.map((entry, i) => {
+    const { body, type } = entry;
+    const foot = matterBodyFootY(body, type);
+    return {
+      i,
+      name: type.name,
+      x: +body.position.x.toFixed(1),
+      phyFoot: +foot.toFixed(1),
+      drawFoot: +getCollapseDrawFootWorldY(body, type).toFixed(1),
+      gap: +(getCollapseDrawFootWorldY(body, type) - foot).toFixed(1),
+      onGround: isCollapseBodyOnGround(body, type),
+      support: collapseHasSupportBelow(body),
+      overPlate: isOverPlateWorldX(body.position.x),
+      speed: +body.speed.toFixed(3),
+    };
+  }));
+  console.log('[surfaces]', { floorY: +floorY.toFixed(1), plateY: +plateY.toFixed(1), plateX: +plateX.toFixed(1) });
+}
+if (typeof window !== 'undefined') window.oyatsuCollapseDebug = oyatsuCollapseDebug;
+
+function triggerCollapse(reasonDetail) {
+  const d = reasonDetail && typeof reasonDetail === 'object'
+    ? reasonDetail
+    : { kind: 'unknown', message: '理由が渡されていません' };
+
+  const stackSnapshot = stack.map((s) => ({
+    type: s.type,
+    relX: s.relX,
+    y: s.y,
+    angle: s.angle || 0,
+    swayX: s.swayX || 0,
+    swayV: s.swayV || 0,
+  }));
+  const toppleDir = getCollapseToppleDir();
+  const swayStrength = Math.abs(stackSway);
+
+  state = 'collapsed';
+  collapseTimer = COLLAPSE_DURATION;
+  falling = null;
+  mogumoguFx = null;
+  // 崩壊の落下音を個数に応じた秒数だけ再生
+  playRakkaSfx(stackSnapshot.length);
+
+  const entry = Object.assign({}, d, {
+    at: 'collapse',
+    gameTimeSec: +gameElapsed.toFixed(3),
+    towerCount: stackSnapshot.length,
+    score,
+    stackSway: +stackSway.toFixed(4),
+    plateX: +plateX.toFixed(1),
+    rotatedCollider: USE_ROTATED_SUPPORT_COLLIDER,
+    matterPhysics: typeof Matter !== 'undefined',
+  });
+  playCollapseLog.push(entry);
+  if (typeof window !== 'undefined') window.oyatsuPlayCollapseLog = playCollapseLog;
+  console.log('[oyatsu-collapse]', entry);
+  if (entry.message) console.log('[oyatsu-collapse]', entry.message);
+
+  setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, d);
+  stack = [];
+
+  collapseCameraSmoothed = cameraY;
+  targetCameraY = cameraY;
+
+  canvas.classList.add('shake');
+  setTimeout(() => canvas.classList.remove('shake'), 300);
+}
+
+// --- Game Flow ---
+function startGame() {
+  score = 0; stack = []; falling = null; mogumoguFx = null;
+  particles = []; floatingTexts = [];
+  destroyMatterWorld();
+  comboCount = 0; totalPerfect = 0; totalGood = 0; totalOK = 0;
+  collapseTimer = 0; gameElapsed = 0; maxTowerHeight = 0; maxStackCount = 0; slidingItems = [];
+  invincibleTimer = 0; nextPowerupStack = POWERUP_FIRST_AT; powerupArmed = false;
+  partyFx = 0; alignTimer = 0; feverEndPauseArmed = false;
+  if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
+  stopRakkaSfx();
+  playCollapseLog = [];
+  if (typeof window !== 'undefined') window.oyatsuPlayCollapseLog = playCollapseLog;
+  plateX = W / 2; prevPlateX = W / 2;
+  stackSway = 0; swayVel = 0; swayPrevPlateDelta = 0;
+  const cam0 = computeTargetCameraY();
+  cameraY = cam0;
+  targetCameraY = cam0;
+  collapseCameraSmoothed = null;
+  isDragging = false;
+  document.getElementById('score-display').textContent = '0';
+  document.getElementById('count-display').textContent = '0';
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('hud').style.display = 'flex';
+  setPaused(false);
+  syncPauseBtnVisibility();
+  state = 'falling';
+  spawnFalling();
+}
+
+function showResult() {
+  state = 'result'; falling = null; mogumoguFx = null;
+  destroyMatterWorld();
+  collapseCameraSmoothed = null;
+  setPaused(false);
+  syncPauseBtnVisibility();
+
+  // 1) Catch score (accumulated during play)
+  const catchScore = score;
+
+  // 2) Stack count bonus: 5pts per sweet (use max count)
+  const countBonus = maxStackCount * 5;
+
+  // 3) Height bonus: max height achieved
+  const heightBonus = maxTowerHeight;
+
+  const totalScore = catchScore + countBonus + heightBonus;
+  const points = Math.floor(totalScore / 10);
+
+  document.getElementById('result-breakdown').innerHTML =
+    `<img src="item_01.png" width="18" height="18" style="vertical-align:middle"> キャッチ: <b style="color:#8B5E3C">${catchScore}</b><br>` +
+    `📦 つんだ数 (×5): <b style="color:#8B5E3C">${countBonus}</b><br>` +
+    `📏 たかさボーナス: <b style="color:#8B5E3C">${heightBonus}</b>`;
+  document.getElementById('result-score').textContent = totalScore;
+  document.getElementById('result-detail').textContent =
+    `最大${maxStackCount}個積んだ！ (P:${totalPerfect} G:${totalGood} OK:${totalOK})`;
+  document.getElementById('result-points').textContent = `+${points} pt`;
+  document.getElementById('result-screen').style.display = 'flex';
+
+  lastSessionCollapseLog = playCollapseLog.slice();
+
+  console.log('[oyatsu-play-end]', {
+    collapseLog: playCollapseLog.slice(),
+    maxStackCount,
+    maxTowerHeight,
+    totalScore,
+  });
+}
+
+// --- Input ---
+let pointerMoved = false;
+
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  isDragging = true; pointerMoved = false;
+  dragStartX = e.clientX; plateStartX = plateX;
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (!isDragging) return;
+  e.preventDefault();
+  const dx = e.clientX - dragStartX;
+  if (Math.abs(dx) > 5) pointerMoved = true;
+  const margin = PLATE_W * 0.4;
+  plateX = Math.max(margin, Math.min(W - margin, plateStartX + dx * PLATE_DRAG_SENS));
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  e.preventDefault();
+  isDragging = false;
+  if (!pointerMoved && falling && state === 'falling' && !paused) {
+    falling.speed = 80 * UNIT; // instant drop
+  }
+});
+
+canvas.addEventListener('pointercancel', () => { isDragging = false; });
+
+// Keyboard controls (PC)
+const keysDown = {};
+const PLATE_SPEED = 4;
+const PLATE_DRAG_SENS = 0.78;
+
+document.addEventListener('keydown', (e) => {
+  keysDown[e.key] = true;
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') && state !== 'start' && state !== 'result') {
+    e.preventDefault();
+  }
+  if ((e.key === ' ' || e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') && falling && state === 'falling' && !paused) {
+    falling.speed = 80 * UNIT;
+  }
+  if (e.key === 'Enter') {
+    if (state === 'start' || state === 'result') startGame();
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  keysDown[e.key] = false;
+});
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('retry-btn').addEventListener('click', startGame);
+
+document.getElementById('pause-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (state !== 'falling' && state !== 'collapsed') return;
+  setPaused(true);
+});
+
+document.getElementById('pause-resume').addEventListener('click', (e) => {
+  e.preventDefault();
+  setPaused(false);
+});
+
+document.getElementById('pause-sound-toggle').addEventListener('click', (e) => {
+  e.preventDefault();
+  sfxEnabled = !sfxEnabled;
+  applySfxVolume();
+  updatePauseSoundToggleLabel();
+});
+
+document.getElementById('debug-hamster-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  debugHamsterEnabled = !debugHamsterEnabled;
+  updateDebugHamsterButton();
+});
+
+document.getElementById('debug-sweet-center-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  debugSweetCenterFixed = !debugSweetCenterFixed;
+  updateDebugSweetCenterButton();
+});
+
+document.getElementById('debug-colliders-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  debugCollidersUiOn = !debugCollidersUiOn;
+  updateDebugCollidersButton();
+});
+
+document.getElementById('debug-log-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  openDebugLogModal();
+});
+
+document.getElementById('debug-log-close').addEventListener('click', (e) => {
+  e.preventDefault();
+  closeDebugLogModal();
+});
+
+document.getElementById('debug-log-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'debug-log-modal') closeDebugLogModal();
+});
+
+// --- Drawing ---
+// y はスプライト下端（足元）。物理の s.y / falling.screenY / 着地 surface と揃える。
+function drawOyatsu(type, x, y, angle, scaleX, scaleY) {
+  const sx = scaleX || 1;
+  const sy = scaleY || 1;
+  const drawW = type.width * UNIT;
+  const drawH = type.height * UNIT;
+  const centerY = y - drawH * 0.5;
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.imageSmoothingEnabled = true;
+  ctx.translate(x, centerY);
+  ctx.rotate(angle || 0);
+  ctx.scale(sx, sy);
+
+  if (type.img && type.img.complete && type.img.naturalWidth > 0) {
+    ctx.drawImage(type.img, -drawW / 2, -drawH / 2, drawW, drawH);
+  } else {
+    const fontSize = Math.round(drawH);
+    ctx.font = `${fontSize}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(type.emoji, 0, 0);
+  }
+  ctx.restore();
+}
+
+function drawPlate(screenPlateY) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(139,94,60,0.1)';
+  ctx.beginPath();
+  ctx.ellipse(plateX, screenPlateY + 10 * UNIT, PLATE_W * 0.6, 8 * UNIT, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFF';
+  ctx.strokeStyle = '#E8D5C4';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(plateX, screenPlateY, PLATE_W * 0.55, PLATE_H * 0.6, 0, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#F5EDE4';
+  ctx.beginPath();
+  ctx.ellipse(plateX, screenPlateY, PLATE_W * 0.45, PLATE_H * 0.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBackground() {
+  for (const p of bgParticles) {
+    const alpha = p.alpha * (0.5 + 0.5 * Math.sin(gameElapsed * 2 + p.phase));
+    ctx.fillStyle = `rgba(255,200,150,${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x * UNIT, p.y * UNIT, p.size * UNIT, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// クラブ/パーティー演出。partyFx(0..1) に応じて背景を暗くし、回転する色付きスポットライトとビートで盛り上げる
+function drawClubFx() {
+  if (partyFx <= 0.001) return;
+  const p = partyFx;
+  // ビート（約128BPM相当）でパルス
+  const beat = 0.5 + 0.5 * Math.sin(gameElapsed * Math.PI * 2 * 2.13);
+  ctx.save();
+  // 背景を暗く（黒を濃いめに）
+  ctx.fillStyle = `rgba(6, 3, 16, ${0.85 * p})`;
+  ctx.fillRect(0, 0, W, H);
+  // 回転スポットライト（加算合成のカラービーム）。ライトは2倍の8本
+  ctx.globalCompositeOperation = 'lighter';
+  const beamColors = ['255,40,120', '60,120,255', '120,255,90', '255,200,40',
+                      '255,40,120', '60,120,255', '120,255,90', '255,200,40'];
+  // ミラーボールは画面上部
+  const cx = W * 0.5, cy = H * 0.12;
+  for (let b = 0; b < beamColors.length; b++) {
+    const ang = gameElapsed * (0.6 + b * 0.12) + b * (Math.PI * 2 / beamColors.length);
+    const len = H * 1.4;
+    const half = (10 + (b % 4) * 3) * UNIT;
+    const ex = cx + Math.cos(ang) * len;
+    const ey = cy + Math.sin(ang) * len;
+    const nx = -Math.sin(ang) * half, ny = Math.cos(ang) * half;
+    const a = (0.10 + 0.10 * beat) * p;
+    const grad = ctx.createLinearGradient(cx, cy, ex, ey);
+    grad.addColorStop(0, `rgba(${beamColors[b]},${a})`);
+    grad.addColorStop(1, `rgba(${beamColors[b]},0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(ex + nx, ey + ny);
+    ctx.lineTo(ex - nx, ey - ny);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // 全体のカラーストロボ（薄く）
+  const hue = (gameElapsed * 90) % 360;
+  ctx.fillStyle = `hsla(${hue}, 90%, 60%, ${0.06 * beat * p})`;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+
+// 戻り値が 1 を一瞬オーバーシュートする easing（フレームインを気持ちよく見せる）
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+function ensurePartyDancers() {
+  if (partyDancers) return;
+  partyDancers = [];
+  const cols = 4, rows = 7;
+  // 緩いグリッドを下敷きにしつつ、大きめのジッターと行ごとのオフセットでランダム感を出す
+  const cellW = W / cols, cellH = H / rows;
+  for (let r = 0; r < rows; r++) {
+    const rowShift = (Math.random() - 0.5) * cellW * 0.8; // 行ごとに横へずらして整列感を崩す
+    for (let c = 0; c < cols; c++) {
+      let tx = (c + 0.5) * cellW + rowShift + (Math.random() - 0.5) * cellW * 0.9;
+      let ty = (r + 0.5) * cellH + (Math.random() - 0.5) * cellH * 0.9;
+      // Y軸の中央16%帯にはハムスターを出さない
+      if (Math.abs(ty - H / 2) < H * 0.08) continue;
+      // X中央を避け、左右に多めに寄せる（中央から外側へ押し出す）
+      const half = W / 2;
+      const nrm = Math.max(-1, Math.min(1, (tx - half) / half));
+      tx = half + Math.sign(nrm || (Math.random() - 0.5)) * Math.pow(Math.abs(nrm), 0.55) * half;
+      // 中央の空きを確保（積みアイテムと重なる下半分は広めに空ける）
+      const centerGap = (ty > H * 0.5 ? 0.30 : 0.16) * W;
+      if (Math.abs(tx - half) < centerGap) {
+        if (ty > H * 0.5) continue; // 下半分の中央は出さない
+        tx = half + Math.sign(tx - half || (Math.random() - 0.5)) * (centerGap + Math.random() * W * 0.08);
+      }
+      tx = Math.max(-20 * UNIT, Math.min(W + 20 * UNIT, tx));
+      const fromLeft = tx < W / 2;
+      const size = (36 + Math.random() * 30) * UNIT; // サイズの幅を広げて遠近感
+      partyDancers.push({
+        tx, ty, size, fromLeft,
+        offX: fromLeft ? -size * 1.6 : W + size * 1.6,
+        delay: Math.random() * 0.45,
+        phase: Math.random() * Math.PI * 2,
+        flip: Math.random() < 0.5 ? -1 : 1,
+        baseRot: (Math.random() - 0.5) * 0.5, // 静止時の傾きもランダム
+        bobAmp: 7 + Math.random() * 7,
+        rotAmp: 0.18 + Math.random() * 0.22,
+        danceSpeed: 0.8 + Math.random() * 0.5,
+      });
+    }
+  }
+}
+
+// フィーバー中、enemy_01 のハムスターが画面端からフレームインして踊り、終了でフレームアウト
+function drawPartyDancers() {
+  if (partyFx <= 0.001) return;
+  if (!(IMG_ENEMY2 && IMG_ENEMY2.complete && IMG_ENEMY2.naturalWidth)) return;
+  ensurePartyDancers();
+  const beat = Math.sin(gameElapsed * Math.PI * 2 * 2.13);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, partyFx * 1.3);
+  for (let i = 0; i < partyDancers.length; i++) {
+    const d = partyDancers[i];
+    const denom = (1 - d.delay) || 1;
+    let t = (partyFx - d.delay) / denom;
+    t = Math.max(0, Math.min(1, t));
+    if (t <= 0) continue;
+    const e = easeOutBack(t);
+    const x = d.offX + (d.tx - d.offX) * e;
+    const bob = Math.sin(gameElapsed * 8 * d.danceSpeed + d.phase) * d.bobAmp * UNIT * t;
+    const rot = d.baseRot * t + Math.sin(gameElapsed * 6 * d.danceSpeed + d.phase) * d.rotAmp * t;
+    const pulse = 1 + 0.1 * beat * t;
+    const s = d.size;
+    ctx.save();
+    ctx.translate(x, d.ty + bob);
+    ctx.rotate(rot);
+    ctx.scale(d.flip * pulse, pulse);
+    ctx.drawImage(IMG_ENEMY2, -s / 2, -s / 2, s, s);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// --- Update ---
+function update(dt) {
+  lastFrameDt = dt;
+  gameElapsed += dt;
+
+  // 無敵モードのカウントダウン。終了時はしきい値を現在の高さより上へ押し上げて連発を防ぐ
+  if (invincibleTimer > 0) {
+    invincibleTimer -= dt;
+    if (invincibleTimer <= 0) {
+      invincibleTimer = 0;
+      nextPowerupStack = Math.max(nextPowerupStack, stack.length + POWERUP_INTERVAL);
+      // 終了の切れ目を分かりやすくするため、次の落下に一拍の間を入れる
+      feverEndPauseArmed = true;
+    }
+  }
+
+  // クラブ演出の強さ：無敵中は素早く立ち上げ、終了後はゆっくりフェードアウト
+  if (invincibleTimer > 0) {
+    partyFx = Math.min(1, partyFx + dt * 4);
+  } else if (partyFx > 0) {
+    partyFx = Math.max(0, partyFx - dt * 1.1);
+  }
+  // BGM（star.mp3）の音量を partyFx に追従させ、終了時にフェードアウト
+  if (partyFx > 0) {
+    SFX_STAR.volume = (sfxEnabled ? 1 : 0) * partyFx;
+  } else if (!SFX_STAR.paused) {
+    SFX_STAR.pause();
+    SFX_STAR.loop = false;
+  }
+
+  if (state === 'falling' || state === 'collapsed') {
+    syncHudCountDisplay();
+    syncPauseBtnVisibility();
+  }
+
+  // Keyboard plate movement
+  if (!isDragging && state !== 'collapsed') {
+    const margin = PLATE_W * 0.4;
+    if (keysDown['ArrowLeft'] || keysDown['a'] || keysDown['A']) {
+      plateX = Math.max(margin, plateX - PLATE_SPEED * UNIT);
+    }
+    if (keysDown['ArrowRight'] || keysDown['d'] || keysDown['D']) {
+      plateX = Math.min(W - margin, plateX + PLATE_SPEED * UNIT);
+    }
+  }
+
+  // Sway physics
+  const plateDelta = plateX - prevPlateX;
+  prevPlateX = plateX;
+
+  // フィーバー中・整列アニメ中は塔をまっすぐ保つため、揺れ物理を止める
+  const freezeSway = invincibleTimer > 0 || alignTimer > 0;
+  if (stack.length > 0 && state !== 'collapsed' && !freezeSway) {
+    updateStackSway(dt, plateDelta);
+  } else if (state !== 'collapsed') {
+    stackSway = 0; swayVel = 0;
+  }
+
+  // スター取得時の中央整列アニメ（relX / swayX / angle をシュッと 0 へ）
+  if (alignTimer > 0) {
+    alignTimer = Math.max(0, alignTimer - dt);
+    const p = 1 - alignTimer / ALIGN_DURATION;
+    const e = easeOutBack(Math.min(1, p));
+    for (const s of stack) {
+      if (s.alignFromRelX === undefined) continue;
+      s.relX = s.alignFromRelX * (1 - e);
+      s.swayX = (s.alignFromSwayX || 0) * (1 - e);
+      s.angle = (s.alignFromAngle || 0) * (1 - e);
+    }
+    if (alignTimer <= 0) {
+      for (const s of stack) {
+        s.relX = 0; s.swayX = 0; s.swayV = 0; s.angle = 0; s.offsetX = 0;
+        delete s.alignFromRelX; delete s.alignFromSwayX; delete s.alignFromAngle;
+      }
+    }
+  }
+
+  // 積んでいる最中、画面外へ出て見えなくなった上段アイテムは削除する
+  // （見えないアイテムの干渉＝着地判定や危険度への影響を避ける）。
+  // 揺れは上段ほど大きいので画面外になるのは基本的に上段。上から順に完全に画面外のものを取り除く。
+  if (state === 'falling' && stack.length > 0) {
+    while (stack.length > 0) {
+      const top = stack[stack.length - 1];
+      const drawX = plateX + top.relX + (top.swayX || 0);
+      const halfW = top.type.width * UNIT * 0.5;
+      if (drawX + halfW < 0 || drawX - halfW > W) {
+        stack.pop(); // 完全に画面外 → 削除
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Background
+  for (const p of bgParticles) {
+    p.y -= p.speed;
+    if (p.y < -10) { p.y = 800; p.x = Math.random() * 420; }
+  }
+
+  // Camera
+  if (state === 'collapsed') {
+    // 崩壊中は地面（お皿の底）を映す位置へ一度寄せて固定する。
+    // スタックは空なので computeTargetCameraY は一定値（地面フレーミング）を返し、
+    // 飛び散ったお菓子には追従しないため、寄せ切ったあとは動かない。
+    targetCameraY = computeTargetCameraY();
+    cameraY += (targetCameraY - cameraY) * CAM_PLAY_FOLLOW_SMOOTH;
+  } else {
+    targetCameraY = computeTargetCameraY();
+    cameraY += (targetCameraY - cameraY) * CAM_PLAY_FOLLOW_SMOOTH;
+  }
+
+  // Falling
+  if (state === 'falling' && falling) {
+    if (debugSweetCenterFixed) falling.x = W / 2;
+    let landTarget = null;
+    if (!falling.missHandled && !falling.trapDodgeHandled) {
+      if (keysDown[' '] || keysDown['s'] || keysDown['S'] || keysDown['ArrowDown']) {
+        falling.speed = 80 * UNIT;
+      }
+      falling.screenY += falling.speed;
+      const fallingRelX = falling.x - plateX;
+
+      // Find the highest surface this item can land on (check all stack items + plate)
+
+      const landLift = LAND_SURFACE_LIFT_MULT * UNIT;
+      for (let i = stack.length - 1; i >= 0; i--) {
+        const s = stack[i];
+        const surfaceWorldY = s.y - s.type.stackHeight * UNIT - landLift;
+        const surfaceScreenY = surfaceWorldY - cameraY;
+        if (falling.screenY < surfaceScreenY) continue;
+        const sAng = (s.angle || 0) + stackItemSwayAngleAt(i);
+        const support = supportInPlay(
+          fallingRelX, falling.type, 0, 0,
+          s.relX, s.type, sAng, stackItemSwayDxAt(i),
+          false
+        );
+        if (support >= 0.15) {
+          landTarget = { worldY: surfaceWorldY, screenY: surfaceScreenY, supportRatio: support, insertIdx: i + 1 };
+          break;
+        }
+      }
+
+      if (!landTarget) {
+        const plateWorldY = PLATE_Y - landLift;
+        const plateScreenY = plateWorldY - cameraY;
+        if (falling.screenY >= plateScreenY) {
+          const support = supportInPlay(
+            fallingRelX, falling.type, 0, 0,
+            0, falling.type, 0, 0,
+            true
+          );
+          if (support >= 0.15) {
+            landTarget = { worldY: plateWorldY, screenY: plateScreenY, supportRatio: support, insertIdx: 0 };
+          }
+        }
+      }
+
+      if (landTarget && !falling.landed) {
+        falling.landed = true;
+        falling.screenY = landTarget.screenY;
+        const { worldY: landingWorldY, screenY: landingScreenY, supportRatio, insertIdx } = landTarget;
+
+        if (falling.type.isPowerup) {
+          // 無敵スターをキャッチ: スタックには積まず、無敵モードを発動
+          invincibleTimer = POWERUP_DURATION;
+          nextPowerupStack = stack.length + POWERUP_INTERVAL;
+          // これまでのズレを解消して中央へ整列（シュッと寄せるアニメを開始）
+          for (const s of stack) {
+            s.alignFromRelX = s.relX;
+            s.alignFromSwayX = s.swayX || 0;
+            s.alignFromAngle = s.angle || 0;
+            s.offsetX = 0;       // 危険度メーターも即クリア
+            s.swayV = 0;
+          }
+          alignTimer = ALIGN_DURATION;
+          playStarGetSfx();
+          playStarSfx();
+          addFloatingText(falling.x, landingScreenY - 34, '✨ FEVER! ✨', '#FF8C00');
+          addParticles(falling.x, landingScreenY, '#FFD54A', 18);
+          addParticles(falling.x, landingScreenY, '#FFFFFF', 8);
+          canvas.classList.add('shake');
+          setTimeout(() => canvas.classList.remove('shake'), 180);
+          falling = null;
+          feverEndPauseArmed = false; // 新たに開始したのでクリア
+          targetCameraY = computeTargetCameraY();
+          // 開始の切れ目を分かりやすくするため、最初の落下に一拍の間を入れる
+          setTimeout(() => {
+            if (state !== 'collapsed' && state !== 'result') {
+              state = 'falling'; spawnFalling();
+            }
+          }, FEVER_EDGE_PAUSE_MS);
+        } else if (falling.type.isTrap) {
+        const hadStack = stack.length > 0;
+        const blowCount = Math.min(1 + Math.floor(Math.random() * 3), stack.length);
+        const eatFrom = Math.max(0, insertIdx - 1);
+        for (let b = 0; b < blowCount; b++) {
+          if (eatFrom >= stack.length) break;
+          const removed = stack.splice(eatFrom, 1)[0];
+          if (removed) {
+            const rx = plateX + removed.relX;
+            const ry = removed.y - cameraY;
+            addParticles(rx, ry, removed.type.color, 9);
+            addParticles(rx, ry, '#FFF8E7', 5);
+          }
+        }
+        rebuildStackFootYs();
+        if (hadStack) {
+          playHamsterEatSfx();
+          mogumoguFx = {
+            worldX: falling.x,
+            worldY: landingWorldY,
+            t: 0,
+            duration: MOGUMOGU_DURATION,
+          };
+          const mogX = falling.x;
+          const mogY = landingScreenY;
+          setTimeout(() => { addFloatingText(mogX, mogY - 36, 'もぐ', '#8B6F47'); }, 0);
+          setTimeout(() => { addFloatingText(mogX, mogY - 52, 'もぐ', '#A0785C'); }, 160);
+          setTimeout(() => { addFloatingText(mogX, mogY - 68, '…おいし♪', '#C48B5C'); }, 320);
+          canvas.classList.add('shake');
+          setTimeout(() => canvas.classList.remove('shake'), 200);
+        } else {
+          addParticles(falling.x, landingScreenY, '#D4C4B0', 8);
+        }
+        comboCount = 0;
+        falling = null;
+
+        targetCameraY = computeTargetCameraY();
+
+        setTimeout(() => {
+          if (state !== 'collapsed' && state !== 'result') {
+            state = 'falling'; spawnFalling();
+          }
+        }, 500);
+      } else {
+        // Normal sweet - Rating based on collision overlap
+        let rating, ratingColor, scoreMult;
+        if (supportRatio > 0.85) {
+          rating = 'Perfect!'; ratingColor = '#FF6B35'; scoreMult = 2;
+          totalPerfect++; comboCount++;
+        } else if (supportRatio > 0.55) {
+          rating = 'Good!'; ratingColor = '#FFB347'; scoreMult = 1.5;
+          totalGood++; comboCount++;
+        } else {
+          rating = 'OK'; ratingColor = '#A0785C'; scoreMult = 1;
+          totalOK++; comboCount = 0;
+        }
+
+        let relX_snap = null;
+        if (insertIdx > 0) {
+          const low = stack[insertIdx - 1];
+          const li = insertIdx - 1;
+          relX_snap = supportOverlapCenterRelX(
+            fallingRelX, falling.type, 0, 0,
+            low.relX, low.type, (low.angle || 0) + stackItemSwayAngleAt(li), stackItemSwayDxAt(li), false
+          );
+        } else {
+          relX_snap = supportOverlapCenterRelX(
+            fallingRelX, falling.type, 0, 0,
+            0, falling.type, 0, 0, true
+          );
+        }
+        if (relX_snap == null) relX_snap = fallingRelX;
+        // フィーバー中はズレを一切残さず、中央に整列して積む
+        const fever = invincibleTimer > 0;
+        const relX_final = fever ? 0 : fallingRelX + (relX_snap - fallingRelX) * LAND_SNAP_STRENGTH;
+
+        const offsetX = fever ? 0 : fallingRelX * LAND_OFFSET_X_SCALE;
+        const landX = plateX + relX_final;
+        const itemScore = Math.round(falling.type.baseScore * scoreMult * (1 + comboCount * 0.1));
+        score += itemScore;
+
+        // 着地の衝撃量（落下速度ベース、0..1）。手触りを速度に連動させる
+        const impact = Math.min(falling.speed / (60 * UNIT), 1);
+
+        // 直下の段に揃えた swayX で挿入（横方向のポップを防ぐ）。フィーバー中は揺れ無しで中央固定
+        const belowSwayX = fever ? 0 : (insertIdx > 0 && stack[insertIdx - 1]
+          ? (stack[insertIdx - 1].swayX || 0) : 0);
+        // Insert at the correct position in the stack (on top of the item it landed on)
+        stack.splice(insertIdx, 0, {
+          type: falling.type,
+          relX: relX_final,
+          y: landingWorldY,
+          offsetX, angle: fever ? 0 : offsetX * 0.005,
+          settled: false, settleTimer: 0,
+          squishTime: 0, squishStrength: 0.22 + impact * 0.3,
+          bounceTime: 0,
+          swayX: belowSwayX, swayV: 0,
+          settleY: (3 + impact * 9) * UNIT, settleV: 0, // 一拍沈んで戻る
+        });
+        // 着地が塔を実際に押す: 接点へ横インパルスを注入（フィーバー中はインパルス無し）
+        const landImpulse = fever ? 0 : (offsetX * 0.6 + Math.sign(offsetX || 1) * impact * 14 * UNIT);
+        const newItem = stack[insertIdx];
+        newItem.swayV += landImpulse;
+        if (insertIdx > 0 && stack[insertIdx - 1]) {
+          stack[insertIdx - 1].swayV += landImpulse * 0.4;
+          // Squish the item below on impact
+          stack[insertIdx - 1].squishTime = 0;
+          stack[insertIdx - 1].squishStrength = 0.1 + impact * 0.12;
+        }
+
+        rebuildStackFootYs();
+
+        playSweetLandSfx();
+
+        addFloatingText(landX, landingScreenY - 30, rating, ratingColor);
+        addFloatingText(landX, landingScreenY - 10, `+${itemScore}`, '#8B5E3C');
+        addParticles(landX, landingScreenY, falling.type.color, 8);
+        document.getElementById('score-display').textContent = score;
+        if (stack.length > maxStackCount) {
+          maxStackCount = stack.length;
+        }
+
+        const currentHeight = Math.floor((PLATE_Y - getStackTopWorld()) / UNIT);
+        if (currentHeight > maxTowerHeight) maxTowerHeight = currentHeight;
+
+        // 一定の高さに達したら次にスターを落とす（無敵中は再アームしない）
+        if (invincibleTimer <= 0 && !powerupArmed && stack.length >= nextPowerupStack) {
+          powerupArmed = true;
+          nextPowerupStack = stack.length + POWERUP_INTERVAL;
+        }
+
+        const landedName = falling.type.name;
+        // 最上段ではなく途中（中間）に刺さった着地は不自然なので即崩壊させる
+        // splice 後なので現在の最上段 index は stack.length-1。insertIdx がそれ未満なら中間刺さり
+        const wedgedMidStack = insertIdx < stack.length - 1;
+        // 無敵中はどんなに不安定でも崩れない
+        let collapseReason = invincibleTimer > 0 ? null : checkCollapse();
+        if (!collapseReason && invincibleTimer <= 0 && wedgedMidStack) {
+          collapseReason = {
+            kind: 'wedged_mid_stack',
+            message: `最上段ではなく途中の段に刺さった（着地段=${insertIdx} / 最上段=${stack.length - 1}）`,
+            insertIdx,
+            topIdx: stack.length - 1,
+            stackLength: stack.length,
+          };
+        }
+        falling = null;
+
+        if (collapseReason) {
+          triggerCollapse(Object.assign({}, collapseReason, {
+            trigger: 'after_land',
+            landedName,
+            landedRelX: +relX_final.toFixed(2),
+            landInsertIndex: insertIdx,
+            landSupportRatio: +supportRatio.toFixed(4),
+          }));
+        } else {
+          // フィーバー中はポンポンと速いテンポで連続落下。
+          // フィーバー終了直後は一拍の間を入れて切れ目を分かりやすくする。
+          let respawnMs;
+          if (invincibleTimer > 0) {
+            respawnMs = POWERUP_RESPAWN_MS;
+          } else if (feverEndPauseArmed) {
+            respawnMs = FEVER_EDGE_PAUSE_MS;
+            feverEndPauseArmed = false;
+          } else {
+            respawnMs = 250;
+          }
+          setTimeout(() => {
+            if (state !== 'collapsed' && state !== 'result') {
+              state = 'falling'; spawnFalling();
+            }
+          }, respawnMs);
+        }
+      }
+    }
+    }
+
+    // Plate plane with no support
+    const landLiftMiss = LAND_SURFACE_LIFT_MULT * UNIT;
+    const plateFloorScreenY = (PLATE_Y - landLiftMiss) - cameraY;
+    if (!landTarget && falling.screenY >= plateFloorScreenY) {
+      if (falling.type.isTrap) {
+        if (!falling.trapDodgeHandled) {
+          falling.trapDodgeHandled = true;
+          falling.screenY = plateFloorScreenY;
+          falling.speed = 0;
+          setTimeout(() => {
+            falling = null;
+            if (state !== 'collapsed' && state !== 'result') spawnFalling();
+          }, 280);
+        }
+      } else if (falling.type.isPowerup) {
+        // スターを取り逃した: ペナルティ無しで静かに次へ
+        if (!falling.missHandled) {
+          falling.missHandled = true;
+          falling.screenY = plateFloorScreenY;
+          falling.speed = 0;
+          setTimeout(() => {
+            falling = null;
+            if (state !== 'collapsed' && state !== 'result') spawnFalling();
+          }, 300);
+        }
+      } else {
+        if (!falling.missHandled) {
+          falling.missHandled = true;
+          falling.screenY = plateFloorScreenY;
+          falling.speed = 0;
+          addFloatingText(W / 2, H * MISS_TEXT_SCREEN_Y_FRAC, 'Miss...', '#CC8888', true);
+          comboCount = 0;
+          setTimeout(() => {
+            falling = null;
+            if (state !== 'collapsed' && state !== 'result') spawnFalling();
+          }, 450);
+        }
+      }
+    }
+  }
+
+  // Collapse: Matter.js rigid-body simulation
+  if (state === 'collapsed') {
+    collapseTimer -= dt;
+    stepMatterCollapse(dt);
+    // 崩れてから固定で COLLAPSE_RESULT_SEC 秒後にリザルト
+    if (collapseTimer <= 0) showResult();
+  }
+
+  // Settle, squish & bounce animation
+  for (const s of stack) {
+    if (!s.settled) {
+      s.settleTimer += dt;
+      if (s.settleTimer > 0.5) s.settled = true;
+    }
+    if (s.squishTime !== undefined) s.squishTime += dt;
+    if (s.bounceTime !== undefined) s.bounceTime += dt;
+    // 着地の縦沈み: 臨界減衰ばねで rest へ戻る（吸い付き感をなくし「沈んで戻る」着地に）
+    if (s.settleY || s.settleV) {
+      const k = 320, c = 2 * Math.sqrt(320) * 0.9; // やや欠減衰で一拍だけ戻る
+      s.settleV = (s.settleV || 0) + (-k * s.settleY - c * (s.settleV || 0)) * dt;
+      s.settleY += s.settleV * dt;
+      if (Math.abs(s.settleY) < 0.05 && Math.abs(s.settleV) < 0.05) { s.settleY = 0; s.settleV = 0; }
+    }
+  }
+
+  // Sliding items (fallen off tower) — with ground bounce
+  const slideGroundY = PLATE_Y + 5 * UNIT - cameraY;
+  for (let i = slidingItems.length - 1; i >= 0; i--) {
+    const si = slidingItems[i];
+    si.vy += GRAVITY * UNIT * dt;
+    si.x += si.vx * dt;
+    si.screenY += si.vy * dt;
+    si.angle += si.angVel * dt;
+
+    // Ground bounce
+    if (si.screenY >= slideGroundY) {
+      si.screenY = slideGroundY;
+      si.vy = -Math.abs(si.vy) * BOUNCE_RESTITUTION;
+      if (Math.abs(si.vy) < 10 * UNIT) si.vy = 0;
+      si.vx *= FRICTION;
+      si.angVel *= ANGULAR_DAMPING * 0.7;
+    }
+
+    si.life -= dt;
+    if (si.life <= 0 || si.screenY > H + 100) slidingItems.splice(i, 1);
+  }
+
+  // Particles (screen space)
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.screenY += p.vy; p.vy += 0.15; p.life -= dt * 2;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Floating texts (screen space)
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const ft = floatingTexts[i];
+    if (!ft.pinY) ft.screenY -= 1.5;
+    ft.life -= dt * 1.5;
+    if (ft.life <= 0) floatingTexts.splice(i, 1);
+  }
+
+  if (mogumoguFx) {
+    mogumoguFx.t += dt;
+    if (mogumoguFx.t >= mogumoguFx.duration) mogumoguFx = null;
+  }
+}
+
+// DEBUG: false 時は 1D 相当の軸平行矩形。USE_ROTATED_SUPPORT_COLLIDER 時はプレイ判定と同じ回転で描画。
+function drawDebugColliderRectAxis(cx, footY, type, fillStyle, strokeStyle) {
+  const w = type.colW * UNIT;
+  const h = type.height * UNIT;
+  ctx.fillStyle = fillStyle;
+  ctx.strokeStyle = strokeStyle;
+  ctx.fillRect(cx - w * 0.5, footY - h, w, h);
+  ctx.strokeRect(cx - w * 0.5, footY - h, w, h);
+}
+
+function drawDebugColliderRectRotated(drawX, footY, type, angleRad, fillStyle, strokeStyle) {
+  const w = type.colW * UNIT;
+  const h = type.height * UNIT;
+  ctx.save();
+  ctx.translate(drawX, footY - h * 0.5);
+  ctx.rotate(angleRad);
+  ctx.fillStyle = fillStyle;
+  ctx.strokeStyle = strokeStyle;
+  ctx.fillRect(-w * 0.5, -h * 0.5, w, h);
+  ctx.strokeRect(-w * 0.5, -h * 0.5, w, h);
+  ctx.restore();
+}
+
+function drawCollidersDebug() {
+  if (!debugCollidersUiOn) return;
+  const landLift = LAND_SURFACE_LIFT_MULT * UNIT;
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 1;
+  if (state === 'collapsed') {
+    for (const entry of physicsBodies) {
+      const body = entry.body;
+      const { w, h } = matterColliderSize(entry.type);
+      const footY = matterBodyFootY(body, entry.type) - cameraY;
+      if (footY > H + 120 || footY < -120) continue;
+      ctx.save();
+      ctx.translate(body.position.x, footY - h * 0.5);
+      ctx.rotate(body.angle);
+      ctx.fillStyle = 'rgba(160, 80, 255, 0.12)';
+      ctx.strokeStyle = 'rgba(120, 40, 200, 0.9)';
+      ctx.fillRect(-w * 0.5, -h * 0.5, w, h);
+      ctx.strokeRect(-w * 0.5, -h * 0.5, w, h);
+      ctx.restore();
+    }
+    const floorScreenY = getTableFloorWorldY() - cameraY;
+    const plateScreenY = getPlateSurfaceWorldY() - cameraY;
+    ctx.setLineDash([8, 5]);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(60, 170, 80, 0.9)';
+    ctx.beginPath();
+    ctx.moveTo(0, floorScreenY);
+    ctx.lineTo(W, floorScreenY);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 140, 50, 0.9)';
+    ctx.beginPath();
+    ctx.moveTo(plateX - PLATE_W * 0.55, plateScreenY);
+    ctx.lineTo(plateX + PLATE_W * 0.55, plateScreenY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (const entry of physicsBodies) {
+      const body = entry.body;
+      const phyFoot = matterBodyFootY(body, entry.type) - cameraY;
+      const drawFoot = getCollapseDrawFootWorldY(body, entry.type) - cameraY;
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(0, 160, 255, 0.75)';
+      ctx.beginPath();
+      ctx.moveTo(body.position.x - 14 * UNIT, phyFoot);
+      ctx.lineTo(body.position.x + 14 * UNIT, phyFoot);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(50, 220, 90, 0.95)';
+      ctx.beginPath();
+      ctx.moveTo(body.position.x - 14 * UNIT, drawFoot);
+      ctx.lineTo(body.position.x + 14 * UNIT, drawFoot);
+      ctx.stroke();
+    }
+  } else {
+    const plateSurfY = PLATE_Y - landLift - cameraY;
+    const bandH = 4 * UNIT;
+    ctx.fillStyle = 'rgba(255, 180, 60, 0.14)';
+    ctx.strokeStyle = 'rgba(220, 120, 30, 0.9)';
+    ctx.fillRect(plateX - PLATE_W * 0.5, plateSurfY - bandH, PLATE_W, bandH);
+    ctx.strokeRect(plateX - PLATE_W * 0.5, plateSurfY - bandH, PLATE_W, bandH);
+
+    for (let i = 0; i < stack.length; i++) {
+      const s = stack[i];
+      const footY = s.y - cameraY;
+      if (footY > H + 60 || footY < -60) continue;
+      if (USE_ROTATED_SUPPORT_COLLIDER) {
+        const drawX = plateX + s.relX + stackItemSwayDxAt(i);
+        const ang = (s.angle || 0) + stackItemSwayAngleAt(i);
+        drawDebugColliderRectRotated(drawX, footY, s.type, ang,
+          'rgba(0, 200, 255, 0.12)', 'rgba(0, 140, 200, 0.85)');
+      } else {
+        drawDebugColliderRectAxis(plateX + s.relX, footY, s.type,
+          'rgba(0, 200, 255, 0.12)', 'rgba(0, 140, 200, 0.85)');
+      }
+    }
+
+    if (falling && state === 'falling') {
+      const footY = falling.screenY;
+      if (USE_ROTATED_SUPPORT_COLLIDER) {
+        drawDebugColliderRectRotated(falling.x, footY, falling.type, 0,
+          'rgba(255, 80, 200, 0.14)', 'rgba(200, 40, 140, 0.92)');
+      } else {
+        drawDebugColliderRectAxis(falling.x, footY, falling.type,
+          'rgba(255, 80, 200, 0.14)', 'rgba(200, 40, 140, 0.92)');
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function updateWobbleMeter() {
+  const wrap = document.getElementById('wobble-meter-wrap');
+  const fill = document.getElementById('wobble-meter-fill');
+  const dangerEl = document.getElementById('wobble-meter-danger');
+  if (!wrap || !fill) return;
+
+  if (state !== 'falling' || paused) {
+    wrap.hidden = true;
+    wrap.setAttribute('aria-hidden', 'true');
+    return;
+  }
+
+  const m = getWobbleDangerMetrics();
+  wrap.hidden = false;
+  wrap.setAttribute('aria-hidden', 'false');
+
+  const t = Math.min(m.ratio, 1);
+  fill.style.transform = `scaleX(${t})`;
+  if (m.ratio >= 1) {
+    fill.style.background = 'linear-gradient(180deg, #ff8a80, #e53935)';
+  } else if (m.ratio >= 0.75) {
+    fill.style.background = 'linear-gradient(180deg, #ffcc80, #fb8c00)';
+  } else if (m.ratio >= 0.5) {
+    fill.style.background = 'linear-gradient(180deg, #fff59d, #ffc107)';
+  } else {
+    fill.style.background = 'linear-gradient(180deg, #c8e6c9, #66bb6a)';
+  }
+
+  if (dangerEl) {
+    if (m.ratio >= 1) {
+      dangerEl.style.opacity = '1';
+      dangerEl.style.color = '#b71c1c';
+    } else if (m.ratio >= 0.75) {
+      dangerEl.style.opacity = '1';
+      dangerEl.style.color = '#c62828';
+    } else if (m.ratio >= 0.5) {
+      dangerEl.style.opacity = '0.85';
+      dangerEl.style.color = '#d84315';
+    } else {
+      dangerEl.style.opacity = '0.45';
+      dangerEl.style.color = '#8d6e63';
+    }
+  }
+}
+
+// --- Draw ---
+function draw() {
+  // Fill solid background (prevents transparency issues)
+  ctx.globalAlpha = 1;
+  const playGrad = ctx.createLinearGradient(0, 0, 0, H);
+  playGrad.addColorStop(0, '#FFFDF8');
+  playGrad.addColorStop(0.42, '#FFF5E8');
+  playGrad.addColorStop(1, '#FFEAD8');
+  ctx.fillStyle = playGrad;
+  ctx.fillRect(0, 0, W, H);
+  drawBackground();
+  drawClubFx();
+  drawPartyDancers();
+
+  // Danger tint on background only (not on top of sweets — avoids "faded" look)
+  if (state === 'falling' && stack.length > 0) {
+    const danger = getWobbleDangerMetrics().ratio;
+    if (danger > 0.5) {
+      ctx.save();
+      const a = (danger - 0.5) * 2 * (0.5 + 0.5 * Math.sin(gameElapsed * 6));
+      ctx.fillStyle = `rgba(255,100,50,${a * 0.15})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+  }
+
+  const screenPlateY = PLATE_Y - cameraY;
+
+  // Height indicator line at stack top
+  if (stack.length > 0 && state !== 'collapsed') {
+    const stackTopScreenY = getStackTopWorld() - cameraY;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,150,100,0.25)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(0, stackTopScreenY);
+    ctx.lineTo(W, stackTopScreenY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Height score label - shows maxTowerHeight (same as result screen)
+    ctx.font = `700 ${Math.round(13 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(255,150,100,0.5)';
+    ctx.fillText(`📏 ${maxTowerHeight}`, W - 10 * UNIT, stackTopScreenY - 6 * UNIT);
+    ctx.restore();
+  }
+
+  // Plate（表示のみ PLATE_DRAW_OFFSET_Y 分下げる）
+  drawPlate(screenPlateY + PLATE_DRAW_OFFSET_Y);
+
+  // Ensure clean alpha state
+  ctx.globalAlpha = 1;
+
+  // Stack (normal play) or physics bodies (collapse)
+  if (state === 'collapsed') {
+    for (const entry of physicsBodies) {
+      const body = entry.body;
+      const onGround = isCollapseBodyOnGround(body, entry.type);
+      const drawFootWorldY = getCollapseSmoothDrawFootY(entry, body, entry.type);
+      const screenY = drawFootWorldY - cameraY;
+      if (screenY > H + 80 || screenY < -80) continue;
+      let sx = 1, sy = 1;
+      if (onGround) {
+        const speed = Math.hypot(body.velocity.x, body.velocity.y);
+        const squash = Math.min(speed / (280 * UNIT), 0.28);
+        sx = 1 + squash;
+        sy = 1 - squash;
+      }
+      drawOyatsu(entry.type, body.position.x, screenY, body.angle, sx, sy);
+    }
+  } else {
+    for (let i = 0; i < stack.length; i++) {
+      const s = stack[i];
+      const settleY = s.settleY || 0; // 着地の縦沈み（+で下、ばねで0へ戻る）
+      const screenY = s.y - cameraY + settleY;
+      if (screenY > H + 50 || screenY < -50) continue;
+      // 横ズレ・傾きは連成チェーンの状態を唯一の参照元に
+      const swayOffsetX = stackItemSwayDxAt(i);
+      // plateX + relX only (no cumulative totalOff) — keeps plate and stack aligned visually
+      const drawX = plateX + s.relX + swayOffsetX;
+      const baseAngle = s.angle;
+      const swayAngle = stackItemSwayAngleAt(i);
+      const bounce = 0;
+
+      // Squish: landing impact (damped spring oscillation)
+      let sx = 1, sy = 1;
+      const t = s.squishTime || 999;
+      const str = s.squishStrength || 0;
+      if (t < 0.6) {
+        const decay = Math.exp(-t * 8);
+        const osc = Math.cos(t * 28);
+        const squash = str * decay * osc;
+        sx = 1 + squash;
+        sy = 1 - squash;
+      }
+      // Idle jiggle: subtle breathing wobble
+      const jigglePhase = gameElapsed * 3.5 + i * 1.8;
+      sx += Math.sin(jigglePhase) * 0.012;
+      sy += Math.cos(jigglePhase * 1.3) * 0.012;
+
+      // 無敵中：各おやつの背後に金色のオーラ
+      if (invincibleTimer > 0) {
+        const auraPulse = 0.6 + 0.4 * Math.sin(gameElapsed * 8 + i * 0.6);
+        const auraR = (s.type.width * UNIT) * 0.62;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const grad = ctx.createRadialGradient(drawX, screenY + bounce, auraR * 0.2, drawX, screenY + bounce, auraR);
+        grad.addColorStop(0, `rgba(255,213,74,${0.55 * auraPulse})`);
+        grad.addColorStop(1, 'rgba(255,213,74,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(drawX, screenY + bounce, auraR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      drawOyatsu(s.type, drawX, screenY + bounce, baseAngle + swayAngle, sx, sy);
+    }
+  }
+
+  // Hamster chew overlay (after stack so it reads on top of tower)
+  if (state !== 'collapsed' && mogumoguFx) {
+    const chewScreenY = mogumoguFx.worldY - cameraY;
+    if (chewScreenY > -80 && chewScreenY < H + 80) {
+      const chew = Math.sin(mogumoguFx.t * MOGUMOGU_CHEW_OMEGA);
+      const sx = 1 - MOGUMOGU_CHEW_AMP * 0.5 * chew;
+      const sy = 1 + MOGUMOGU_CHEW_AMP * chew;
+      drawOyatsu(TRAP_TYPE, mogumoguFx.worldX, chewScreenY, 0, sx, sy);
+    }
+  }
+
+  // Falling oyatsu (screen space)
+  if (falling && state === 'falling') {
+    // Absolute X (same frame as plateX + relX for stacked items)
+    const fallingDrawX = falling.x;
+
+    // Stretch vertically based on fall speed（スターは正方形を保つためストレッチしない）
+    const fallStretch = falling.type.isPowerup ? 0 : Math.min(falling.speed / (40 * UNIT), 0.2);
+    drawOyatsu(falling.type, fallingDrawX, falling.screenY, 0, 1 - fallStretch * 0.4, 1 + fallStretch);
+
+    // Find predicted landing surface (same logic as update, but for visuals)
+    const fRelX = falling.x - plateX;
+    const vLandLift = LAND_SURFACE_LIFT_MULT * UNIT;
+    let predictedScreenY = PLATE_Y - cameraY - vLandLift;
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const s = stack[i];
+      const sAng = (s.angle || 0) + stackItemSwayAngleAt(i);
+      const support = supportInPlay(
+        fRelX, falling.type, 0, 0,
+        s.relX, s.type, sAng, stackItemSwayDxAt(i),
+        false
+      );
+      if (support >= 0.15) {
+        predictedScreenY = (s.y - s.type.stackHeight * UNIT - vLandLift) - cameraY;
+        break;
+      }
+    }
+    const landingScreenY = Math.max(predictedScreenY, 80 * UNIT);
+
+    // Drop shadow at landing point (use same X offset as the falling item)
+    ctx.fillStyle = 'rgba(139,94,60,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(fallingDrawX, landingScreenY + 5, falling.type.width * UNIT * 0.3, 4 * UNIT, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Guide line
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,150,100,0.15)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 8]);
+    const fallCenterY = falling.screenY - falling.type.height * UNIT * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(fallingDrawX, fallCenterY);
+    ctx.lineTo(fallingDrawX, landingScreenY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  drawCollidersDebug();
+
+  // Sliding items (falling off tower)
+  for (const si of slidingItems) {
+    ctx.globalAlpha = Math.min(si.life, 1);
+    drawOyatsu(si.type, si.x, si.screenY, si.angle);
+  }
+  ctx.globalAlpha = 1;
+
+  // Particles (screen space)
+  for (const p of particles) {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.screenY, p.size * UNIT, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Floating texts (screen space)
+  for (const ft of floatingTexts) {
+    ctx.globalAlpha = ft.life;
+    ctx.font = `900 ${Math.round(22 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = ft.color;
+    ctx.fillText(ft.text, ft.x, ft.screenY);
+  }
+  ctx.globalAlpha = 1;
+
+  // 無敵モード HUD（残り時間バー＋ラベル）
+  if (invincibleTimer > 0) {
+    const ratio = Math.max(0, Math.min(invincibleTimer / POWERUP_DURATION, 1));
+    const barW = 140 * UNIT;
+    const barH = 12 * UNIT;
+    const barX = (W - barW) / 2;
+    const barY = 18 * UNIT;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = `900 ${Math.round(18 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
+    const pulse = 0.7 + 0.3 * Math.sin(gameElapsed * 9);
+    ctx.fillStyle = `rgba(255,179,0,${pulse})`;
+    ctx.fillText('✨ FEVER ✨', W / 2, barY - 5 * UNIT);
+    // バー枠
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW, barH, barH / 2);
+    ctx.fill();
+    // 残り
+    const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+    grad.addColorStop(0, '#FFE082');
+    grad.addColorStop(1, '#FFB300');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW * ratio, barH, barH / 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  updateWobbleMeter();
+}
+
+// --- Loop ---
+let lastTime = 0;
+function gameLoop(timestamp) {
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+  lastTime = timestamp;
+  if (!paused && state !== 'start' && state !== 'result') update(dt);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
