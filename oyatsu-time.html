@@ -33,6 +33,10 @@
     width: 100%; max-width: 420px; padding: 16px 20px; pointer-events: none;
     gap: 12px;
   }
+  /* スマホ（タッチ主体）は HUD も画面幅いっぱいに */
+  @media (pointer: coarse) {
+    #hud { max-width: none; }
+  }
   .hud-left-col {
     display: flex; flex-direction: column; gap: 8px; pointer-events: none;
   }
@@ -412,7 +416,10 @@ function closeDebugLogModal() {
 
 function resize() {
   const dpr = window.devicePixelRatio || 1;
-  W = Math.min(window.innerWidth, 420);
+  // スマホ（タッチ主体の端末）は画面いっぱい、PC は従来どおり最大420px
+  const isTouchDevice = (typeof window.matchMedia === 'function')
+    && window.matchMedia('(pointer: coarse)').matches;
+  W = isTouchDevice ? window.innerWidth : Math.min(window.innerWidth, 420);
   H = window.innerHeight;
   canvas.width = W * dpr;
   canvas.height = H * dpr;
@@ -593,7 +600,14 @@ function updatePauseSoundToggleLabel() {
 
 function setPaused(p) {
   paused = p;
-  if (p) isDragging = false;
+  if (p) {
+    isDragging = false;
+    if (!SFX_STAR.paused) SFX_STAR.pause();
+  } else {
+    if (invincibleTimer > 0 && sfxEnabled && SFX_STAR.paused) {
+      SFX_STAR.play().catch(() => {});
+    }
+  }
   const modal = document.getElementById('pause-modal');
   if (modal) {
     modal.classList.toggle('is-open', p);
@@ -601,17 +615,27 @@ function setPaused(p) {
   }
 }
 
+let _prevHudCount = -1;
 function syncHudCountDisplay() {
   const el = document.getElementById('count-display');
   if (!el) return;
-  if (state === 'falling') el.textContent = String(stack.length);
-  else if (state === 'collapsed') el.textContent = String(maxStackCount);
+  let newCount;
+  if (state === 'falling') newCount = stack.length;
+  else if (state === 'collapsed') newCount = maxStackCount;
+  else return;
+  if (newCount === _prevHudCount) return;
+  _prevHudCount = newCount;
+  el.textContent = String(newCount);
 }
 
+let _prevPauseBtnVisible = null;
 function syncPauseBtnVisibility() {
   const btn = document.getElementById('pause-btn');
   if (!btn) return;
-  btn.style.visibility = (state === 'falling' || state === 'collapsed') ? 'visible' : 'hidden';
+  const v = (state === 'falling' || state === 'collapsed');
+  if (v === _prevPauseBtnVisible) return;
+  _prevPauseBtnVisible = v;
+  btn.style.visibility = v ? 'visible' : 'hidden';
 }
 
 applySfxVolume();
@@ -1104,7 +1128,8 @@ function spawnFalling() {
   let speed = (baseSpeed + Math.random()) * UNIT * FALL_SPEED_SCALE;
   if (invincibleTimer > 0) speed *= POWERUP_FALL_SPEED_MULT; // フィーバー中は速く落とす
 
-  falling = { type, x, screenY: -60, speed, landed: false };
+  // フィーバー中に落ち始めたアイテムは、途中でフィーバーが切れても最後まで頂点に追従して乗る
+  falling = { type, x, screenY: -60, speed, landed: false, feverBorn: invincibleTimer > 0 };
 }
 
 function addFloatingText(x, screenY, text, color, pinY) {
@@ -1140,7 +1165,7 @@ const TABLE_FLOOR_OFFSET_UNIT = 12;
 const COLLAPSE_MAX_DY_PER_STEP_UNIT = 22;
 const COLLAPSE_MAX_SPEED_UNIT = 52;
 const COLLAPSE_MAX_ANGULAR = 0.28;
-const COLLAPSE_PHYSICS_SUBSTEPS = 3;
+const COLLAPSE_PHYSICS_SUBSTEPS = 2;
 /** 崩壊時の最低限の「倒れる勢い」。整列タワーでも確実に崩れて見えるための下限。 */
 const MIN_COLLAPSE_SWAY = 0.55;
 const COLLAPSE_DRAW_FOOT_LERP = 18;
@@ -1261,7 +1286,7 @@ function getCollapseDrawFootWorldY(body, type) {
   return foot - spritePad;
 }
 
-function setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, reason) {
+function setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, reason, extraFaller) {
   destroyMatterWorld();
   if (typeof Matter === 'undefined') {
     console.warn('[oyatsu] Matter.js が読み込めません。崩壊演出をスキップします。');
@@ -1270,7 +1295,7 @@ function setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, reason) {
 
   const { Engine, Bodies, Body, Composite } = Matter;
   const n = stackSnapshot.length;
-  if (n === 0) return;
+  if (n === 0 && !extraFaller) return;
 
   // 崩壊判定が出たら見た目も必ず倒れるよう、倒れる勢いに下限を設ける。
   // ほぼ整列したタワー（途中刺さり等）でも sway≈0 で動かず固まるのを防ぐ。
@@ -1308,7 +1333,7 @@ function setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, reason) {
   const plateBody = Bodies.rectangle(plateX, plateSurfY + plateBodyH * 0.5, PLATE_W * 0.92, plateBodyH, {
     isStatic: true,
     friction: 0.8,
-    restitution: 0.5,
+    restitution: 0.12,
     label: 'plate',
     chamfer: { radius: 1 * UNIT },
   });
@@ -1356,6 +1381,36 @@ function setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, reason) {
     });
     Body.setAngularVelocity(body, toppleDir * tier * (0.07 + effSway * 0.06) * (0.8 + Math.random() * 0.35));
 
+    dynamicBodies.push(body);
+    const initFoot = matterBodyFootY(body, type);
+    physicsBodies.push({
+      body,
+      type,
+      smoothDrawFootY: initFoot,
+      prevBodyX: body.position.x,
+      prevBodyY: body.position.y,
+    });
+  }
+
+  // 側面に衝突した落下アイテム本体も物理に加えて床へ転がす
+  if (extraFaller && extraFaller.type) {
+    const type = extraFaller.type;
+    const { w, h } = matterColliderSize(type);
+    const cx = extraFaller.worldX;
+    const cy = extraFaller.footY - h * 0.5;
+    const body = Bodies.rectangle(cx, cy, w, h, {
+      friction: 0.55,
+      frictionStatic: 0.65,
+      frictionAir: 0.018,
+      restitution: 0.1,
+      slop: 0.02,
+      chamfer: { radius: Math.min(1.5 * UNIT, w * 0.04, h * 0.04) },
+      label: 'sweet',
+    });
+    const mass = type.mass || 1;
+    Body.setMass(body, mass * 12 * UNIT);
+    Body.setVelocity(body, { x: extraFaller.vx || 0, y: extraFaller.vy || 0 });
+    Body.setAngularVelocity(body, extraFaller.spin || 0);
     dynamicBodies.push(body);
     const initFoot = matterBodyFootY(body, type);
     physicsBodies.push({
@@ -1425,6 +1480,18 @@ function clampCollapseBodyAfterStep(entry, stepDt) {
   if (Math.abs(av) > COLLAPSE_MAX_ANGULAR) {
     Matter.Body.setAngularVelocity(body, Math.sign(av) * COLLAPSE_MAX_ANGULAR);
   }
+
+  // 接地済みでほぼ静止しかけているアイテムの「ぽんぽん」縦バウンスを抑える。
+  // 上向き（負方向）の小さな跳ね返り速度を強く減衰させて落ち着かせる。
+  if (isCollapseBodyOnGround(body, entry.type)) {
+    const vy = body.velocity.y;
+    if (vy < 0 && Math.abs(vy) < 6 * UNIT) {
+      Matter.Body.setVelocity(body, { x: body.velocity.x * 0.9, y: vy * 0.25 });
+      if (Math.abs(body.angularVelocity) < 0.08) {
+        Matter.Body.setAngularVelocity(body, body.angularVelocity * 0.6);
+      }
+    }
+  }
 }
 
 function stepMatterCollapse(dt) {
@@ -1488,7 +1555,7 @@ function oyatsuCollapseDebug() {
 }
 if (typeof window !== 'undefined') window.oyatsuCollapseDebug = oyatsuCollapseDebug;
 
-function triggerCollapse(reasonDetail) {
+function triggerCollapse(reasonDetail, extraFaller) {
   const d = reasonDetail && typeof reasonDetail === 'object'
     ? reasonDetail
     : { kind: 'unknown', message: '理由が渡されていません' };
@@ -1526,7 +1593,7 @@ function triggerCollapse(reasonDetail) {
   console.log('[oyatsu-collapse]', entry);
   if (entry.message) console.log('[oyatsu-collapse]', entry.message);
 
-  setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, d);
+  setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, d, extraFaller);
   stack = [];
 
   collapseCameraSmoothed = cameraY;
@@ -1712,19 +1779,20 @@ document.getElementById('debug-log-modal').addEventListener('click', (e) => {
 
 // --- Drawing ---
 // y はスプライト下端（足元）。物理の s.y / falling.screenY / 着地 surface と揃える。
-function drawOyatsu(type, x, y, angle, scaleX, scaleY) {
+function drawOyatsu(type, x, y, angle, scaleX, scaleY, glowAlpha) {
   const sx = scaleX || 1;
   const sy = scaleY || 1;
   const drawW = type.width * UNIT;
   const drawH = type.height * UNIT;
   const centerY = y - drawH * 0.5;
   ctx.save();
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.imageSmoothingEnabled = true;
+  if (glowAlpha > 0) {
+    ctx.shadowColor = `rgba(255,220,80,${glowAlpha})`;
+    ctx.shadowBlur = 18 * UNIT;
+  }
   ctx.translate(x, centerY);
-  ctx.rotate(angle || 0);
-  ctx.scale(sx, sy);
+  if (angle) ctx.rotate(angle);
+  if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
 
   if (type.img && type.img.complete && type.img.naturalWidth > 0) {
     ctx.drawImage(type.img, -drawW / 2, -drawH / 2, drawW, drawH);
@@ -1758,13 +1826,14 @@ function drawPlate(screenPlateY) {
 }
 
 function drawBackground() {
+  // 全パーティクルを単一パスで描画（fill 呼び出し 15 回→1 回に削減）
+  ctx.fillStyle = 'rgba(255,200,150,0.22)';
+  ctx.beginPath();
   for (const p of bgParticles) {
-    const alpha = p.alpha * (0.5 + 0.5 * Math.sin(gameElapsed * 2 + p.phase));
-    ctx.fillStyle = `rgba(255,200,150,${alpha})`;
-    ctx.beginPath();
+    ctx.moveTo((p.x + p.size) * UNIT, p.y * UNIT);
     ctx.arc(p.x * UNIT, p.y * UNIT, p.size * UNIT, 0, Math.PI * 2);
-    ctx.fill();
   }
+  ctx.fill();
 }
 
 // クラブ/パーティー演出。partyFx(0..1) に応じて背景を暗くし、回転する色付きスポットライトとビートで盛り上げる
@@ -1779,22 +1848,18 @@ function drawClubFx() {
   ctx.fillRect(0, 0, W, H);
   // 回転スポットライト（加算合成のカラービーム）。ライトは2倍の8本
   ctx.globalCompositeOperation = 'lighter';
-  const beamColors = ['255,40,120', '60,120,255', '120,255,90', '255,200,40',
-                      '255,40,120', '60,120,255', '120,255,90', '255,200,40'];
-  // ミラーボールは画面上部
+  // グラデーション廃止（毎フレーム createLinearGradient ×8 を排除）、4本の単色ビームに削減
+  const beamColors = ['rgba(255,40,120,', 'rgba(60,120,255,', 'rgba(120,255,90,', 'rgba(255,200,40,'];
   const cx = W * 0.5, cy = H * 0.12;
-  for (let b = 0; b < beamColors.length; b++) {
-    const ang = gameElapsed * (0.6 + b * 0.12) + b * (Math.PI * 2 / beamColors.length);
+  for (let b = 0; b < 4; b++) {
+    const ang = gameElapsed * (0.6 + b * 0.24) + b * (Math.PI * 2 / 4);
     const len = H * 1.4;
-    const half = (10 + (b % 4) * 3) * UNIT;
+    const half = (10 + b * 3) * UNIT;
     const ex = cx + Math.cos(ang) * len;
     const ey = cy + Math.sin(ang) * len;
     const nx = -Math.sin(ang) * half, ny = Math.cos(ang) * half;
-    const a = (0.10 + 0.10 * beat) * p;
-    const grad = ctx.createLinearGradient(cx, cy, ex, ey);
-    grad.addColorStop(0, `rgba(${beamColors[b]},${a})`);
-    grad.addColorStop(1, `rgba(${beamColors[b]},0)`);
-    ctx.fillStyle = grad;
+    const a = (0.13 + 0.10 * beat) * p;
+    ctx.fillStyle = `${beamColors[b]}${a})`;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(ex + nx, ey + ny);
@@ -2000,11 +2065,12 @@ function update(dt) {
   // Falling
   if (state === 'falling' && falling) {
     if (debugSweetCenterFixed) falling.x = W / 2;
-    // フィーバー中は積んであるテッペン（お皿位置）を目掛けて追従させる
-    if (invincibleTimer > 0 && !falling.missHandled && !falling.trapDodgeHandled) {
+    // フィーバー中に落ち始めたアイテムは、頂点（お皿位置）を目掛けて最後まで追従させる
+    // （途中でフィーバーが切れても feverBorn なら追従を継続して必ず頂点に乗せる）
+    if (falling.feverBorn && !falling.missHandled && !falling.trapDodgeHandled) {
       const top = stack.length > 0 ? stack[stack.length - 1] : null;
       const targetX = top ? (plateX + top.relX + (top.swayX || 0)) : plateX;
-      falling.x += (targetX - falling.x) * 0.18; // なめらかに寄せる
+      falling.x += (targetX - falling.x) * 0.28; // しっかり寄せる
     }
     let landTarget = null;
     if (!falling.missHandled && !falling.trapDodgeHandled) {
@@ -2046,6 +2112,75 @@ function update(dt) {
           if (support >= 0.15) {
             landTarget = { worldY: plateWorldY, screenY: plateScreenY, supportRatio: support, insertIdx: 0 };
           }
+        }
+      }
+
+      // 側面衝突チェック: 上面以外（左右・下面）に触れたら崩壊
+      // （フィーバー生まれのアイテムは頂点に追従して乗るので側面崩壊させない）
+      if (!landTarget && invincibleTimer <= 0 && !falling.feverBorn) {
+        const fallingWorldBottom = falling.screenY + cameraY;
+        const fallingWorldTop = fallingWorldBottom - falling.type.height * UNIT;
+        // 当たり判定(colW)は狭く、見た目(width)の方が広い。見た目で触れていれば対象にする
+        const fallingHalfCol = falling.type.colW * UNIT * 0.5;
+        const fallingHalfVis = falling.type.width * UNIT * 0.5;
+        for (let si = 0; si < stack.length; si++) {
+          const s = stack[si];
+          const sTop = s.y - s.type.stackHeight * UNIT;
+          const sBottom = s.y;
+          const sCx = plateX + s.relX + stackItemSwayDxAt(si);
+          const sHalfCol = s.type.colW * UNIT * 0.5;
+          const sHalfVis = s.type.width * UNIT * 0.5;
+          if (fallingWorldBottom <= sTop) continue;                     // まだ上にある
+          if (fallingWorldTop >= sBottom) continue;                     // 完全に下
+          if (falling.x + fallingHalfVis <= sCx - sHalfVis) continue;   // 見た目でも左に外れ
+          if (falling.x - fallingHalfVis >= sCx + sHalfVis) continue;   // 見た目でも右に外れ
+          // 星は側面に当たってもフィーバー発動（崩壊させない）
+          if (falling.type.isPowerup) {
+            const surfaceWorldY = stack[stack.length - 1].y
+              - stack[stack.length - 1].type.stackHeight * UNIT - landLift;
+            landTarget = {
+              worldY: surfaceWorldY,
+              screenY: surfaceWorldY - cameraY,
+              supportRatio: 1,
+              insertIdx: stack.length,
+            };
+            break;
+          }
+          // 当たり判定(colW)でしっかり重なっているか
+          const hardHit = (falling.x + fallingHalfCol > sCx - sHalfCol)
+            && (falling.x - fallingHalfCol < sCx + sHalfCol);
+          const hitName = s.type.name;
+          const fallingName = falling.type.name;
+          // 見た目では触れているが当たり判定はすり抜ける「崩れない隙間」では、
+          // わざと積みアイテムを当たった向きへ傾けてから崩す。
+          if (!hardHit) {
+            const dir = Math.sign(sCx - falling.x) || 1; // 当たった側から押される向き
+            ensureSwayState();
+            for (let k = si; k < stack.length; k++) {
+              const kk = stack[k];
+              const up = k - si;
+              kk.swayV = (kk.swayV || 0) + dir * 540 * UNIT * (0.6 + up * 0.28);
+              kk.swayX = (kk.swayX || 0) + dir * 6 * UNIT * (up + 1);
+            }
+            stackSway = dir * 0.85;
+          }
+          // 衝突した落下アイテムは消さず、当たった反対側へ弾かれて床に転がる
+          const awayDir = Math.sign(falling.x - sCx) || 1;
+          const faller = {
+            type: falling.type,
+            worldX: falling.x,
+            footY: falling.screenY + cameraY,
+            vx: awayDir * (2.2 + Math.random()) * UNIT,
+            vy: 0.6 * UNIT,
+            spin: awayDir * (0.1 + Math.random() * 0.08),
+          };
+          falling = null;
+          triggerCollapse({
+            kind: 'side_hit',
+            message: `落下アイテム（${fallingName}）が積みアイテム（${hitName}）の側面に当たった（段${si}、${hardHit ? '直撃' : 'かすり→傾けて崩す'}）`,
+            hitTier: si, hitItemName: hitName, fallingName, hardHit,
+          }, faller);
+          break;
         }
       }
 
@@ -2155,8 +2290,8 @@ function update(dt) {
           );
         }
         if (relX_snap == null) relX_snap = fallingRelX;
-        // フィーバー中はズレを一切残さず、中央に整列して積む
-        const fever = invincibleTimer > 0;
+        // フィーバー中（およびフィーバー中に落ち始めたアイテム）はズレを残さず中央に整列して積む
+        const fever = invincibleTimer > 0 || falling.feverBorn;
         const relX_final = fever ? 0 : fallingRelX + (relX_snap - fallingRelX) * LAND_SNAP_STRENGTH;
 
         const offsetX = fever ? 0 : fallingRelX * LAND_OFFSET_X_SCALE;
@@ -2197,8 +2332,8 @@ function update(dt) {
 
         playSweetLandSfx();
 
-        addFloatingText(landX, landingScreenY - 30, rating, ratingColor);
-        addFloatingText(landX, landingScreenY - 10, `+${itemScore}`, '#8B5E3C');
+        addFloatingText(landX, landingScreenY - 50, rating, ratingColor);
+        addFloatingText(landX, landingScreenY - 30, `+${itemScore}`, '#FFF8EE');
         addParticles(landX, landingScreenY, falling.type.color, 8);
         document.getElementById('score-display').textContent = score;
         if (stack.length > maxStackCount) {
@@ -2218,9 +2353,9 @@ function update(dt) {
         // 最上段ではなく途中（中間）に刺さった着地は不自然なので即崩壊させる
         // splice 後なので現在の最上段 index は stack.length-1。insertIdx がそれ未満なら中間刺さり
         const wedgedMidStack = insertIdx < stack.length - 1;
-        // 無敵中はどんなに不安定でも崩れない
-        let collapseReason = invincibleTimer > 0 ? null : checkCollapse();
-        if (!collapseReason && invincibleTimer <= 0 && wedgedMidStack) {
+        // 無敵中・フィーバー生まれのアイテムはどんなに不安定でも崩れない
+        let collapseReason = fever ? null : checkCollapse();
+        if (!collapseReason && !fever && wedgedMidStack) {
           collapseReason = {
             kind: 'wedged_mid_stack',
             message: `最上段ではなく途中の段に刺さった（着地段=${insertIdx} / 最上段=${stack.length - 1}）`,
@@ -2266,7 +2401,7 @@ function update(dt) {
     // 塔が高いとお皿は画面のはるか下にあり、外したアイテムの落下が長く待たされる。
     // ミスの到達点を「画面の少し下」までに制限し、画面外へ落ちきる前にミス確定させてテンポを保つ。
     const plateFloorScreenY = Math.min((PLATE_Y - landLiftMiss) - cameraY, H + 30 * UNIT);
-    if (!landTarget && falling.screenY >= plateFloorScreenY) {
+    if (falling && !landTarget && falling.screenY >= plateFloorScreenY) {
       if (falling.type.isTrap) {
         if (!falling.trapDodgeHandled) {
           falling.trapDodgeHandled = true;
@@ -2484,60 +2619,65 @@ function drawCollidersDebug() {
   ctx.restore();
 }
 
+const _wm = {
+  wrap: null, fill: null, dangerEl: null,
+  prevHidden: null, prevTQ: -1, prevTier: -1,
+};
 function updateWobbleMeter() {
-  const wrap = document.getElementById('wobble-meter-wrap');
-  const fill = document.getElementById('wobble-meter-fill');
-  const dangerEl = document.getElementById('wobble-meter-danger');
+  if (!_wm.wrap) {
+    _wm.wrap = document.getElementById('wobble-meter-wrap');
+    _wm.fill = document.getElementById('wobble-meter-fill');
+    _wm.dangerEl = document.getElementById('wobble-meter-danger');
+  }
+  const { wrap, fill, dangerEl } = _wm;
   if (!wrap || !fill) return;
 
-  if (state !== 'falling' || paused) {
-    wrap.hidden = true;
-    wrap.setAttribute('aria-hidden', 'true');
-    return;
+  const shouldHide = state !== 'falling' || paused;
+  if (shouldHide !== _wm.prevHidden) {
+    _wm.prevHidden = shouldHide;
+    wrap.hidden = shouldHide;
+    wrap.setAttribute('aria-hidden', shouldHide ? 'true' : 'false');
   }
+  if (shouldHide) return;
 
   const m = getWobbleDangerMetrics();
-  wrap.hidden = false;
-  wrap.setAttribute('aria-hidden', 'false');
-
   const t = Math.min(m.ratio, 1);
+  const tier = m.ratio >= 1 ? 3 : m.ratio >= 0.75 ? 2 : m.ratio >= 0.5 ? 1 : 0;
+  const tQ = Math.round(t * 50); // 2% 刻みで変化時のみ DOM 更新
+  if (tQ === _wm.prevTQ && tier === _wm.prevTier) return;
+  _wm.prevTQ = tQ;
+  _wm.prevTier = tier;
+
   fill.style.transform = `scaleX(${t})`;
-  if (m.ratio >= 1) {
-    fill.style.background = 'linear-gradient(180deg, #ff8a80, #e53935)';
-  } else if (m.ratio >= 0.75) {
-    fill.style.background = 'linear-gradient(180deg, #ffcc80, #fb8c00)';
-  } else if (m.ratio >= 0.5) {
-    fill.style.background = 'linear-gradient(180deg, #fff59d, #ffc107)';
-  } else {
-    fill.style.background = 'linear-gradient(180deg, #c8e6c9, #66bb6a)';
-  }
+  const bgMap = [
+    'linear-gradient(180deg, #c8e6c9, #66bb6a)',
+    'linear-gradient(180deg, #fff59d, #ffc107)',
+    'linear-gradient(180deg, #ffcc80, #fb8c00)',
+    'linear-gradient(180deg, #ff8a80, #e53935)',
+  ];
+  fill.style.background = bgMap[tier];
 
   if (dangerEl) {
-    if (m.ratio >= 1) {
-      dangerEl.style.opacity = '1';
-      dangerEl.style.color = '#b71c1c';
-    } else if (m.ratio >= 0.75) {
-      dangerEl.style.opacity = '1';
-      dangerEl.style.color = '#c62828';
-    } else if (m.ratio >= 0.5) {
-      dangerEl.style.opacity = '0.85';
-      dangerEl.style.color = '#d84315';
-    } else {
-      dangerEl.style.opacity = '0.45';
-      dangerEl.style.color = '#8d6e63';
-    }
+    const opMap = ['0.45', '0.85', '1', '1'];
+    const colMap = ['#8d6e63', '#d84315', '#c62828', '#b71c1c'];
+    dangerEl.style.opacity = opMap[tier];
+    dangerEl.style.color = colMap[tier];
   }
 }
 
 // --- Draw ---
+let _cachedBgGrad = null, _cachedBgGradH = 0;
 function draw() {
   // Fill solid background (prevents transparency issues)
   ctx.globalAlpha = 1;
-  const playGrad = ctx.createLinearGradient(0, 0, 0, H);
-  playGrad.addColorStop(0, '#FFFDF8');
-  playGrad.addColorStop(0.42, '#FFF5E8');
-  playGrad.addColorStop(1, '#FFEAD8');
-  ctx.fillStyle = playGrad;
+  if (!_cachedBgGrad || _cachedBgGradH !== H) {
+    _cachedBgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    _cachedBgGrad.addColorStop(0, '#FFFDF8');
+    _cachedBgGrad.addColorStop(0.42, '#FFF5E8');
+    _cachedBgGrad.addColorStop(1, '#FFEAD8');
+    _cachedBgGradH = H;
+  }
+  ctx.fillStyle = _cachedBgGrad;
   ctx.fillRect(0, 0, W, H);
   drawBackground();
   drawClubFx();
@@ -2630,23 +2770,11 @@ function draw() {
       sx += Math.sin(jigglePhase) * 0.012;
       sy += Math.cos(jigglePhase * 1.3) * 0.012;
 
-      // 無敵中：各おやつの背後に金色のオーラ
-      if (invincibleTimer > 0) {
-        const auraPulse = 0.6 + 0.4 * Math.sin(gameElapsed * 8 + i * 0.6);
-        const auraR = (s.type.width * UNIT) * 0.62;
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        const grad = ctx.createRadialGradient(drawX, screenY + bounce, auraR * 0.2, drawX, screenY + bounce, auraR);
-        grad.addColorStop(0, `rgba(255,213,74,${0.55 * auraPulse})`);
-        grad.addColorStop(1, 'rgba(255,213,74,0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(drawX, screenY + bounce, auraR, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
+      const glowAlpha = invincibleTimer > 0
+        ? 0.55 + 0.45 * Math.sin(gameElapsed * 8 + i * 0.6)
+        : 0;
 
-      drawOyatsu(s.type, drawX, screenY + bounce, baseAngle + swayAngle, sx, sy);
+      drawOyatsu(s.type, drawX, screenY + bounce, baseAngle + swayAngle, sx, sy, glowAlpha);
     }
   }
 
