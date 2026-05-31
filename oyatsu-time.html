@@ -540,8 +540,15 @@ function ensureRakkaBoost() {
 }
 function stopRakkaSfx() {
   if (rakkaStopTimer) { clearTimeout(rakkaStopTimer); rakkaStopTimer = null; }
+  if (rakkaGainNode && rakkaAudioCtx) {
+    try {
+      rakkaGainNode.gain.cancelScheduledValues(rakkaAudioCtx.currentTime);
+      rakkaGainNode.gain.value = RAKKA_GAIN;
+    } catch (e) {}
+  }
   if (!SFX_RAKKA.paused) { SFX_RAKKA.pause(); }
   SFX_RAKKA.currentTime = 0;
+  SFX_RAKKA.volume = 1;
 }
 function playRakkaSfx(count) {
   stopRakkaSfx();
@@ -553,6 +560,25 @@ function playRakkaSfx(count) {
   SFX_RAKKA.currentTime = 0;
   SFX_RAKKA.volume = 1;
   SFX_RAKKA.play().catch(() => {});
+  // 徐々にフェードアウト（序盤は維持し、後半にかけて音量を下げる）
+  if (rakkaGainNode && rakkaAudioCtx) {
+    const t0 = rakkaAudioCtx.currentTime;
+    const g = rakkaGainNode.gain;
+    try {
+      g.cancelScheduledValues(t0);
+      g.setValueAtTime(RAKKA_GAIN, t0);
+      g.setValueAtTime(RAKKA_GAIN, t0 + durSec * 0.3);
+      g.linearRampToValueAtTime(0.0001, t0 + durSec);
+    } catch (e) {}
+  } else {
+    // フォールバック: 要素音量を段階的に下げる
+    let si = 0; const steps = 8;
+    const fadeIv = setInterval(() => {
+      si++;
+      SFX_RAKKA.volume = Math.max(0, 1 - si / steps);
+      if (si >= steps) clearInterval(fadeIv);
+    }, Math.max(30, (durSec * 1000) / steps * 0.7));
+  }
   rakkaStopTimer = setTimeout(() => {
     if (!SFX_RAKKA.paused) SFX_RAKKA.pause();
     SFX_RAKKA.currentTime = 0;
@@ -1064,13 +1090,15 @@ function spawnFalling() {
   }
 
   // Trap chance: 積み3個から上昇、最大約42%（無敵中はトラップを出さない）
+  // 直前がトラップなら連続では出さない（ハムスターの連続投下を防ぐ）
   let type;
   const trapChance = stack.length >= 3 ? Math.min((stack.length - 2) * 0.07, 0.42) : 0;
-  if (debugHamsterEnabled && invincibleTimer <= 0 && Math.random() < trapChance) {
+  if (debugHamsterEnabled && invincibleTimer <= 0 && !lastWasTrap && Math.random() < trapChance) {
     type = TRAP_TYPE;
   } else {
     type = OYATSU_TYPES[Math.floor(Math.random() * OYATSU_TYPES.length)];
   }
+  lastWasTrap = (type === TRAP_TYPE);
 
   // 落下速度：アイテム毎の重さ補正を撤廃して一律。全体を少し遅く（1.2倍ゆっくり）
   let speed = (baseSpeed + Math.random()) * UNIT * FALL_SPEED_SCALE;
@@ -1515,7 +1543,7 @@ function startGame() {
   destroyMatterWorld();
   comboCount = 0; totalPerfect = 0; totalGood = 0; totalOK = 0;
   collapseTimer = 0; gameElapsed = 0; maxTowerHeight = 0; maxStackCount = 0; slidingItems = [];
-  invincibleTimer = 0; nextPowerupStack = POWERUP_FIRST_AT; powerupArmed = false;
+  invincibleTimer = 0; nextPowerupStack = POWERUP_FIRST_AT; powerupArmed = false; lastWasTrap = false;
   partyFx = 0; alignTimer = 0; feverEndPauseArmed = false;
   if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
   stopRakkaSfx();
@@ -1972,6 +2000,12 @@ function update(dt) {
   // Falling
   if (state === 'falling' && falling) {
     if (debugSweetCenterFixed) falling.x = W / 2;
+    // フィーバー中は積んであるテッペン（お皿位置）を目掛けて追従させる
+    if (invincibleTimer > 0 && !falling.missHandled && !falling.trapDodgeHandled) {
+      const top = stack.length > 0 ? stack[stack.length - 1] : null;
+      const targetX = top ? (plateX + top.relX + (top.swayX || 0)) : plateX;
+      falling.x += (targetX - falling.x) * 0.18; // なめらかに寄せる
+    }
     let landTarget = null;
     if (!falling.missHandled && !falling.trapDodgeHandled) {
       if (keysDown[' '] || keysDown['s'] || keysDown['S'] || keysDown['ArrowDown']) {
@@ -2229,7 +2263,9 @@ function update(dt) {
 
     // Plate plane with no support
     const landLiftMiss = LAND_SURFACE_LIFT_MULT * UNIT;
-    const plateFloorScreenY = (PLATE_Y - landLiftMiss) - cameraY;
+    // 塔が高いとお皿は画面のはるか下にあり、外したアイテムの落下が長く待たされる。
+    // ミスの到達点を「画面の少し下」までに制限し、画面外へ落ちきる前にミス確定させてテンポを保つ。
+    const plateFloorScreenY = Math.min((PLATE_Y - landLiftMiss) - cameraY, H + 30 * UNIT);
     if (!landTarget && falling.screenY >= plateFloorScreenY) {
       if (falling.type.isTrap) {
         if (!falling.trapDodgeHandled) {
