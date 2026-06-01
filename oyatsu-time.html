@@ -257,7 +257,7 @@
 <button type="button" id="debug-log-btn">ログ</button>
 <button type="button" id="debug-hamster-btn" aria-pressed="true">ハムスター ON</button>
 <button type="button" id="debug-sweet-center-btn" aria-pressed="false">落下中央 OFF</button>
-<button type="button" id="debug-colliders-btn" aria-pressed="false">コリダー OFF</button>
+<button type="button" id="debug-colliders-btn" aria-pressed="false">コライダー OFF</button>
 <div id="ui-overlay">
   <div id="hud" style="display:none;">
     <div class="hud-left-col">
@@ -350,7 +350,7 @@ function initDebugCollidersFromEnv() {
 function updateDebugCollidersButton() {
   const btn = document.getElementById('debug-colliders-btn');
   if (!btn) return;
-  btn.textContent = debugCollidersUiOn ? 'コリダー ON' : 'コリダー OFF';
+  btn.textContent = debugCollidersUiOn ? 'コライダー ON' : 'コライダー OFF';
   btn.classList.toggle('on', debugCollidersUiOn);
   btn.setAttribute('aria-pressed', debugCollidersUiOn ? 'true' : 'false');
 }
