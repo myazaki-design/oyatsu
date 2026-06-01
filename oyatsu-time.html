@@ -1964,6 +1964,8 @@ function drawPartyDancers() {
 function update(dt) {
   lastFrameDt = dt;
   gameElapsed += dt;
+  // フレームレート非依存スケール（60fps基準）。1フレーム移動量に掛けて端末ごとの速度差を無くす
+  const fs = dt * 60;
 
   // 無敵モードのカウントダウン。終了時はしきい値を現在の高さより上へ押し上げて連発を防ぐ
   if (invincibleTimer > 0) {
@@ -1999,10 +2001,10 @@ function update(dt) {
   if (!isDragging) {
     const margin = PLATE_W * 0.4;
     if (keysDown['ArrowLeft'] || keysDown['a'] || keysDown['A']) {
-      plateX = Math.max(margin, plateX - PLATE_SPEED * UNIT);
+      plateX = Math.max(margin, plateX - PLATE_SPEED * UNIT * fs);
     }
     if (keysDown['ArrowRight'] || keysDown['d'] || keysDown['D']) {
-      plateX = Math.min(W - margin, plateX + PLATE_SPEED * UNIT);
+      plateX = Math.min(W - margin, plateX + PLATE_SPEED * UNIT * fs);
     }
   }
 
@@ -2055,7 +2057,7 @@ function update(dt) {
 
   // Background
   for (const p of bgParticles) {
-    p.y -= p.speed;
+    p.y -= p.speed * fs;
     if (p.y < -10) { p.y = 800; p.x = Math.random() * 420; }
   }
 
@@ -2086,7 +2088,7 @@ function update(dt) {
       if (keysDown[' '] || keysDown['s'] || keysDown['S'] || keysDown['ArrowDown']) {
         falling.speed = 80 * UNIT;
       }
-      falling.screenY += falling.speed;
+      falling.screenY += falling.speed * fs;
       const fallingRelX = falling.x - plateX;
 
       // Find the highest surface this item can land on (check all stack items + plate)
@@ -2498,14 +2500,14 @@ function update(dt) {
   // Particles (screen space)
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
-    p.x += p.vx; p.screenY += p.vy; p.vy += 0.15; p.life -= dt * 2;
+    p.x += p.vx * fs; p.screenY += p.vy * fs; p.vy += 0.15 * fs; p.life -= dt * 2;
     if (p.life <= 0) particles.splice(i, 1);
   }
 
   // Floating texts (screen space)
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     const ft = floatingTexts[i];
-    if (!ft.pinY) ft.screenY -= 1.5;
+    if (!ft.pinY) ft.screenY -= 1.5 * fs;
     ft.life -= dt * 1.5;
     if (ft.life <= 0) floatingTexts.splice(i, 1);
   }
