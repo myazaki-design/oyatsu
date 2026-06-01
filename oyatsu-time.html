@@ -673,6 +673,16 @@ const FEVER_EDGE_PAUSE_MS = 1000;
 const POWERUP_FALL_SPEED_MULT = 2.4;
 /** 全体の落下速度スケール（1.2倍ゆっくり = 1/1.2） */
 const FALL_SPEED_SCALE = 1 / 1.2;
+/** 最初のフィーバーになるまでの追加スロー（さらに1.2倍ゆっくり） */
+const PRE_FEVER_SLOW = 1 / 1.2;
+/** フィーバー後: ここで指定したスコアを稼ぐごとに最高速へ近づく（大きいほど緩やかに加速） */
+const SCORE_SPEED_SCALE = 3000;
+/** フィーバー後のスコア加速の上限（PRE_FEVER_SLOW にこれを足した値が最高倍率） */
+const MAX_SCORE_SPEED_BOOST = 0.6;
+/** 最初のフィーバーを既に経験したか（落下速度の段階制御に使用） */
+let hadFirstFever = false;
+/** 最初のフィーバー発動時点のスコア（以降の加速はこの差分で計算） */
+let feverStartScore = 0;
 
 // Game state
 let state = 'start';
@@ -1103,6 +1113,19 @@ function checkCollapse() {
   return null;
 }
 
+/**
+ * 落下速度の難易度倍率。
+ * - 最初のフィーバーになるまで: さらにゆっくり（PRE_FEVER_SLOW）
+ * - フィーバーを経験した後: スコアに応じて段々速くなる（上限あり）
+ */
+function getDifficultySpeedMult() {
+  if (!hadFirstFever) return PRE_FEVER_SLOW;
+  // フィーバー直後は前と同じ速度から始め、以降に稼いだスコア分だけ緩やかに加速（不連続なし）
+  const gained = Math.max(0, score - feverStartScore);
+  const boost = Math.min(gained / SCORE_SPEED_SCALE, MAX_SCORE_SPEED_BOOST);
+  return PRE_FEVER_SLOW + boost;
+}
+
 function spawnFalling() {
   // 落下速度は積み数に依存せず一定（個数で速くならない）
   const baseSpeed = 8;
@@ -1117,7 +1140,7 @@ function spawnFalling() {
   // 無敵スターの出番: armed なら最優先で落とす（無敵中はさらに重ねない）
   if (powerupArmed && invincibleTimer <= 0) {
     powerupArmed = false;
-    const pSpeed = (baseSpeed + Math.random()) * UNIT * FALL_SPEED_SCALE;
+    const pSpeed = (baseSpeed + Math.random()) * UNIT * FALL_SPEED_SCALE * getDifficultySpeedMult();
     falling = { type: POWERUP_TYPE, x, screenY: -60, speed: pSpeed, landed: false };
     return;
   }
@@ -1134,7 +1157,8 @@ function spawnFalling() {
   lastWasTrap = (type === TRAP_TYPE);
 
   // 落下速度：アイテム毎の重さ補正を撤廃して一律。全体を少し遅く（1.2倍ゆっくり）
-  let speed = (baseSpeed + Math.random()) * UNIT * FALL_SPEED_SCALE;
+  // 難易度倍率：最初のフィーバーまではさらにゆっくり、以降はスコアで段々速く
+  let speed = (baseSpeed + Math.random()) * UNIT * FALL_SPEED_SCALE * getDifficultySpeedMult();
   if (invincibleTimer > 0) speed *= POWERUP_FALL_SPEED_MULT; // フィーバー中は速く落とす
 
   // フィーバー中に落ち始めたアイテムは、途中でフィーバーが切れても最後まで頂点に追従して乗る
@@ -1620,6 +1644,7 @@ function startGame() {
   comboCount = 0; totalPerfect = 0; totalGood = 0; totalOK = 0;
   collapseTimer = 0; gameElapsed = 0; maxTowerHeight = 0; maxStackCount = 0; slidingItems = [];
   invincibleTimer = 0; nextPowerupStack = POWERUP_FIRST_AT; powerupArmed = false; lastWasTrap = false;
+  hadFirstFever = false; feverStartScore = 0;
   partyFx = 0; alignTimer = 0; feverEndPauseArmed = false;
   if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
   stopRakkaSfx();
@@ -2221,6 +2246,8 @@ function update(dt) {
         if (falling.type.isPowerup) {
           // 無敵スターをキャッチ: スタックには積まず、無敵モードを発動
           invincibleTimer = POWERUP_DURATION;
+          // 以降は落下速度がスコアに応じて段々速くなる（最初の発動時のスコアを基準に）
+          if (!hadFirstFever) { hadFirstFever = true; feverStartScore = score; }
           nextPowerupStack = stack.length + POWERUP_INTERVAL;
           // これまでのズレを解消して中央へ整列（シュッと寄せるアニメを開始）
           for (const s of stack) {
