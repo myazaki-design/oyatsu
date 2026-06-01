@@ -675,10 +675,8 @@ const POWERUP_FALL_SPEED_MULT = 2.4;
 const FALL_SPEED_SCALE = 1 / 1.2;
 /** 最初のフィーバーになるまでの追加スロー（さらに1.2倍ゆっくり） */
 const PRE_FEVER_SLOW = 1 / 1.2;
-/** フィーバー後: ここで指定したスコアを稼ぐごとに最高速へ近づく（大きいほど緩やかに加速） */
-const SCORE_SPEED_SCALE = 3000;
-/** フィーバー後のスコア加速の上限（PRE_FEVER_SLOW にこれを足した値が最高倍率） */
-const MAX_SCORE_SPEED_BOOST = 0.6;
+/** フィーバー後: この差分スコアを稼ぐと最高速（＝フィーバー時の速度）に到達する */
+const SCORE_SPEED_SCALE = 4700;
 /** 最初のフィーバーを既に経験したか（落下速度の段階制御に使用） */
 let hadFirstFever = false;
 /** 最初のフィーバー発動時点のスコア（以降の加速はこの差分で計算） */
@@ -1120,10 +1118,11 @@ function checkCollapse() {
  */
 function getDifficultySpeedMult() {
   if (!hadFirstFever) return PRE_FEVER_SLOW;
-  // フィーバー直後は前と同じ速度から始め、以降に稼いだスコア分だけ緩やかに加速（不連続なし）
+  // フィーバー直後は前と同じ速度（PRE_FEVER_SLOW）から始め、稼いだスコアに応じて
+  // 緩やかに加速し、最高速はフィーバー時の倍率（POWERUP_FALL_SPEED_MULT）に到達する。
   const gained = Math.max(0, score - feverStartScore);
-  const boost = Math.min(gained / SCORE_SPEED_SCALE, MAX_SCORE_SPEED_BOOST);
-  return PRE_FEVER_SLOW + boost;
+  const t = Math.min(gained / SCORE_SPEED_SCALE, 1);
+  return PRE_FEVER_SLOW + (POWERUP_FALL_SPEED_MULT - PRE_FEVER_SLOW) * t;
 }
 
 function spawnFalling() {
