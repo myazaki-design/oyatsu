@@ -81,17 +81,33 @@
   }
   .hud-label { font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 0.06em; }
   .hud-value { font-size: 24px; font-weight: 900; color: var(--ink); }
+  /* インゲームのオプションボタン: TOPの音ボタンと同じ不透明ツヤ白の丸ボタン */
   #pause-btn {
     flex-shrink: 0; pointer-events: auto; margin-top: 2px;
-    width: 46px; height: 46px; border-radius: 16px; border: 1.5px solid var(--glass-line);
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    color: var(--ink); font-size: 20px; line-height: 1;
-    cursor: pointer; box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.9);
+    position: relative; overflow: hidden;
+    width: 38px; height: 38px; border-radius: 50%; border: none;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7f0 50%, #ffeadd 100%);
+    color: var(--ink); font-size: 17px; line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #e9cdb9, 0 7px 16px rgba(205,150,105,0.25), inset 0 2px 0 #fff;
+    transition: transform 0.1s, box-shadow 0.1s;
     font-family: inherit; display: flex; align-items: center; justify-content: center;
   }
-  #pause-btn:active { transform: scale(0.96); }
+  #pause-btn::before {
+    content: ''; position: absolute; top: 4px; left: 12%; right: 12%; height: 38%;
+    border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0));
+    pointer-events: none;
+  }
+  #pause-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #e9cdb9, 0 3px 8px rgba(205,150,105,0.25), inset 0 2px 0 #fff;
+  }
+  /* 一時停止アイコン（茶色PNG・透過50%） */
+  #pause-btn .pause-icon {
+    width: 22px; height: 13px;
+    background: url('stop_icon_01.png') center / contain no-repeat;
+    opacity: 0.5;
+  }
   .pause-modal {
     position: fixed; inset: 0; z-index: 45; display: none;
     align-items: center; justify-content: center; padding: 24px;
@@ -101,62 +117,89 @@
   }
   .pause-modal.is-open { display: flex; }
   .pause-modal-dialog {
-    width: 100%; max-width: 300px;
-    background: var(--glass-bg-strong);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border-radius: 26px; padding: 28px 24px; text-align: center;
-    box-shadow: 0 20px 50px rgba(205,150,105,0.35), inset 0 1px 0 rgba(255,255,255,0.95);
-    border: 1.5px solid var(--glass-line);
+    width: 100%; max-width: 340px; max-height: calc(100dvh - 48px); overflow-y: auto;
+    /* あそびかた/リザルトと同じフレーム画像。比率を保って歪みを防ぐ */
+    background: url('result_frame.png') center top / 100% 100% no-repeat;
+    aspect-ratio: 818 / 1318;
+    padding: 98px 42px 52px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    filter: drop-shadow(0 18px 40px rgba(205,150,105,0.4));
   }
   .pause-modal-title {
     font-size: 22px; font-weight: 900; color: var(--ink);
     margin-bottom: 20px;
   }
-  .btn-pause-option {
-    width: 100%; margin-bottom: 12px; padding: 14px 16px; border-radius: 16px;
-    border: none; background: rgba(255,255,255,0.55);
-    color: var(--ink); font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer;
-    box-shadow: 0 2px 10px rgba(205,150,105,0.18);
-  }
-  .btn-pause-option:active { transform: translateY(1px); }
-  .btn-pause-resume {
-    width: 100%; margin-top: 8px; padding: 14px 16px; border-radius: 50px;
-    border: none;
-    background: linear-gradient(180deg, var(--tsum-pink-light) 0%, var(--tsum-pink) 45%, var(--tsum-pink-dark) 100%);
-    color: #fff; font-size: 18px; font-weight: 900; font-family: inherit; cursor: pointer;
-    text-shadow: 0 2px 0 rgba(178,58,143,0.55);
-    box-shadow: 0 5px 0 var(--tsum-pink-shadow), 0 8px 20px rgba(40,10,92,0.35), inset 0 2px 0 rgba(255,255,255,0.5);
-  }
-  .btn-pause-resume:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--tsum-pink-shadow), inset 0 2px 0 rgba(255,255,255,0.5); }
-  #start-screen, #result-screen {
+  /* 一時停止メニュー内のボタンサイズ（見た目は .btn / .btn-sub 共通デザイン） */
+  .btn-pause-option { width: 82%; margin-bottom: 12px; padding: 13px 16px; font-size: 16px; }
+  .pause-modal-dialog .btn { width: 100%; margin-top: 8px; padding: 14px 16px; font-size: 18px; }
+  #start-screen {
     position: absolute;
     top: var(--game-top, 0px); bottom: var(--game-top, 0px);
     left: var(--game-left, 0px); right: var(--game-left, 0px);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     pointer-events: auto; z-index: 10;
-  }
-  /* PC ではゲームフレームの角丸に合わせる */
-  @media (pointer: fine) {
-    #start-screen, #result-screen {
-      border-radius: 24px; overflow: hidden;
-      border: 2px solid var(--glass-line);
-      box-shadow: 0 20px 50px rgba(205,150,105,0.35);
-    }
-  }
-  #start-screen {
     /* トップ画像を全面背景に。文字の可読性のため上下に白系の薄いスクリムを重ねる */
     background:
       linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.02) 26%, rgba(255,255,255,0.02) 58%, rgba(255,255,255,0.45) 100%),
       url('top_image.png') center / cover no-repeat,
       linear-gradient(180deg, #ffffff 0%, #f0e9f8 100%);
   }
-  #result-screen {
-    background:
-      radial-gradient(90% 60% at 50% 10%, rgba(255,214,190,0.4) 0%, rgba(255,214,190,0) 55%),
-      linear-gradient(175deg, #ffffff 0%, #f7f2fb 55%, #f0e6f5 100%);
-    backdrop-filter: blur(12px); display: none;
+  /* PC ではゲームフレームの角丸に合わせる */
+  @media (pointer: fine) {
+    #start-screen {
+      border-radius: 24px; overflow: hidden;
+      border: 2px solid var(--glass-line);
+      box-shadow: 0 20px 50px rgba(205,150,105,0.35);
+    }
   }
+  /* リザルト/あそびかたはインゲームの上に重なるダイアログ（一時停止モーダルと同系） */
+  #result-screen, #howto-screen {
+    position: fixed; inset: 0; z-index: 46; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+    background: rgba(240, 235, 250, 0.45); backdrop-filter: blur(10px) saturate(1.2);
+    -webkit-backdrop-filter: blur(10px) saturate(1.2);
+    pointer-events: auto;
+  }
+  #howto-screen { z-index: 47; }
+  /* ダイアログのポップアップ演出: 背景はふわっとフェード、本体はぽよんと弾んで登場 */
+  @keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes dialogPopIn {
+    0%   { transform: scale(0.2) translateY(120px); opacity: 0; }
+    40%  { transform: scale(1.06) translateY(-8px); opacity: 1; }
+    62%  { transform: scale(0.97) translateY(3px); }
+    80%  { transform: scale(1.01) translateY(-1px); }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  #result-screen, #howto-screen, .pause-modal.is-open {
+    animation: overlayFadeIn 0.1s ease-out both;
+  }
+  .result-dialog, .pause-modal-dialog {
+    animation: dialogPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+  }
+  /* あそびかたは中身が少ないので、フレーム画像の縦横比を保って歪みを防ぐ */
+  #howto-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: center; }
+  #howto-screen .btn { padding: 14px 38px; font-size: 19px; margin-top: 18px; }
+  .howto-body {
+    font-size: 15px; color: var(--ink); line-height: 2.2; margin: 10px 0;
+  }
+  .howto-note {
+    font-size: 12px; color: var(--ink-soft); line-height: 1.9; margin: 6px 0 0;
+  }
+  .result-dialog {
+    width: 100%; max-width: 340px; max-height: calc(100dvh - 48px); overflow-y: auto;
+    /* result_frame.png（リボン付きフレーム）を背景に。中身がフレーム内側に収まるよう余白を確保 */
+    background: url('result_frame.png') center top / 100% 100% no-repeat;
+    padding: 98px 42px 52px; text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+    filter: drop-shadow(0 18px 40px rgba(205,150,105,0.4));
+  }
+  #result-screen .result-score { font-size: 46px; }
+  #result-screen .result-points { margin: 12px 0 20px; }
+  #result-screen .btn { padding: 14px 38px; font-size: 19px; }
   .title {
     font-size: 44px; font-weight: 900; color: var(--accent);
     text-shadow: 0 2px 0 rgba(255,255,255,0.9), 0 6px 18px rgba(240,100,142,0.3);
@@ -169,17 +212,66 @@
     margin-bottom: 4px;
     pointer-events: none;
   }
-  .subtitle {
-    font-size: 16px; color: #fff; font-weight: 700; margin-bottom: 12px;
+  /* ロゴ下のフレーバーテキスト */
+  .flavor-text {
+    font-size: 16px; color: #fff; font-weight: 700; margin-bottom: 24px;
     text-shadow: 0 1px 3px rgba(125,80,50,0.75), 0 0 12px rgba(125,80,50,0.5);
   }
-  .how-to {
-    font-size: 13px; color: var(--ink); margin-bottom: 28px; text-align: center; line-height: 1.7;
-    background: var(--glass-bg); border: 1.5px solid var(--glass-line); border-radius: 16px;
-    padding: 12px 18px;
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.9);
+  /* サブボタン: 不透明でツヤのある白系（メインの赤ボタンと同じ立体感） */
+  .btn-sub, .btn-pause-option {
+    position: relative; overflow: hidden;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7f0 50%, #ffeadd 100%);
+    color: var(--accent); border: none;
+    border-radius: 50px; font-weight: 900;
+    font-family: 'Zen Maru Gothic', sans-serif; cursor: pointer;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.9);
+    box-shadow: 0 5px 0 #e9cdb9, 0 10px 22px rgba(205,150,105,0.28), inset 0 2px 0 #fff;
+    transition: transform 0.1s, box-shadow 0.1s; pointer-events: auto;
+  }
+  .btn-sub::before, .btn-pause-option::before {
+    content: ''; position: absolute; top: 4px; left: 12%; right: 12%; height: 38%;
+    border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0));
+    pointer-events: none;
+  }
+  .btn-sub:active, .btn-pause-option:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #e9cdb9, 0 3px 8px rgba(205,150,105,0.25), inset 0 2px 0 #fff;
+  }
+  .btn-sub { margin-bottom: 26px; padding: 12px 40px; font-size: 17px; }
+  /* オプション内のサブボタンは茶色文字 */
+  .btn-pause-option { color: var(--ink); }
+  /* あきらめる: ピンク文字で区別 */
+  .btn-pause-giveup { color: var(--accent); }
+  /* 画面右上の音声オン/オフボタン（ゲーム枠ではなくビューポート基準）
+     ※ #start-screen > * の position:relative より詳細度を上げるため親IDを付ける
+     見た目はサブボタン（不透明ツヤ白）と共通 */
+  #start-screen #sound-toggle-btn {
+    position: fixed; top: 16px; right: 16px; z-index: 11;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7f0 50%, #ffeadd 100%);
+    border: none; overflow: hidden;
+    cursor: pointer; pointer-events: auto;
+    box-shadow: 0 3px 0 #e9cdb9, 0 7px 16px rgba(205,150,105,0.25), inset 0 2px 0 #fff;
+    transition: transform 0.1s, box-shadow 0.1s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #sound-toggle-btn::before {
+    content: ''; position: absolute; top: 4px; left: 12%; right: 12%; height: 38%;
+    border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0));
+    pointer-events: none;
+  }
+  #sound-toggle-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #e9cdb9, 0 3px 8px rgba(205,150,105,0.25), inset 0 2px 0 #fff;
+  }
+  /* アイコンは茶色PNGをそのまま表示（ON: bgm_icon_02 / OFF: bgm_icon_01） */
+  #sound-toggle-btn .snd-icon {
+    width: 22px; height: 13px;
+    background: url('bgm_icon_02.png') center / contain no-repeat;
+    opacity: 0.5;
+  }
+  #sound-toggle-btn.is-off .snd-icon {
+    background-image: url('bgm_icon_01.png');
   }
   .btn {
     position: relative; overflow: hidden;
@@ -223,6 +315,15 @@
     font-size: 58px; font-weight: 900; color: var(--accent);
     text-shadow: 0 2px 0 rgba(255,255,255,0.9), 0 8px 20px rgba(240,100,142,0.35); margin: 8px 0;
   }
+  /* 合計スコアを囲む枠（フレーム内の点線と調和する淡いカード） */
+  .result-score-box {
+    width: 100%; padding: 10px 16px 6px; margin: 8px 0 4px;
+    background: rgba(255,255,255,0.55);
+    border: 1.5px dashed rgba(240,100,142,0.45);
+    border-radius: 18px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  .result-score-box .result-score { margin: 2px 0 4px; }
   .result-detail { font-size: 14px; color: var(--ink-soft); margin-bottom: 4px; }
   .result-points {
     font-size: 18px; font-weight: 900; color: #1d7a35;
@@ -275,12 +376,12 @@
   #debug-sweet-center-btn.on {
     background: rgba(255, 235, 210, 0.96); border-color: rgba(200, 120, 60, 0.5); color: #8B4513;
   }
-  /* 右下デバッグピル4つは既定で表示 */
+  /* 右下デバッグピル4つは既定で非表示（?debug=1 のときだけ表示） */
   #debug-colliders-btn,
   #debug-log-btn,
   #debug-hamster-btn,
   #debug-sweet-center-btn {
-    display: block !important;
+    display: none;
   }
   html.show-debug-ui #debug-colliders-btn,
   html.show-debug-ui #debug-log-btn,
@@ -391,13 +492,15 @@
       <div class="hud-box"><div class="hud-label">スコア</div><div class="hud-value" id="score-display">0</div></div>
       <div class="hud-box"><div class="hud-label">つんだ数</div><div class="hud-value" id="count-display">0</div></div>
     </div>
-    <button type="button" id="pause-btn" aria-label="一時停止">⏸</button>
+    <button type="button" id="pause-btn" aria-label="一時停止"><span class="pause-icon"></span></button>
   </div>
   <div id="pause-modal" class="pause-modal" aria-hidden="true">
     <div class="pause-modal-dialog" role="dialog" aria-labelledby="pause-modal-title">
       <h2 id="pause-modal-title" class="pause-modal-title">一時停止</h2>
       <button type="button" class="btn-pause-option" id="pause-sound-toggle">音量: オン</button>
-      <button type="button" class="btn-pause-resume" id="pause-resume">再開</button>
+      <button type="button" class="btn-pause-option" id="pause-howto">あそびかた</button>
+      <button type="button" class="btn-pause-option btn-pause-giveup" id="pause-giveup">あきらめる</button>
+      <button type="button" class="btn" id="pause-resume">再開</button>
     </div>
   </div>
   <div id="debug-log-modal" class="debug-log-modal" aria-hidden="true">
@@ -429,21 +532,35 @@
     <span class="tsum-sparkle" style="left:36%; top:82%; width:16px; height:16px; --spark:#ffd0e2; animation-duration:2.5s; animation-delay:2.6s;"></span>
     <span class="tsum-sparkle" style="left:66%; top:88%; width:22px; height:22px; --spark:#ffe9a8; animation-duration:3.5s; animation-delay:0.7s;"></span>
   </div>
+  <button id="sound-toggle-btn" aria-label="音声オン/オフ"><span class="snd-icon"></span></button>
   <img id="title-logo" src="logo.png" alt="スイーツムツム">
-  <div class="subtitle">✨ タップでおやつを積み上げよう！ ✨</div>
-  <div class="how-to">🍽 スワイプ or ← → キーでお皿を動かして<br>🍩 おやつをキャッチしよう！<br>👆 タップ or スペース / S / 下キー で落下スピードUP</div>
+  <div class="flavor-text">✨ スイーツをたくさんつもう！ ✨</div>
+  <button class="btn-sub" id="howto-btn">あそびかた</button>
   <button class="btn" id="start-btn">はじめる</button>
 </div>
-<div id="result-screen">
-  <div class="deco-emoji">🏆</div>
-  <div class="title" style="font-size:28px;">けっか</div>
-  <div id="result-breakdown" style="font-size:14px; color:var(--ink-soft); line-height:2; margin:8px 0;"></div>
-  <div style="width:60%; height:1px; background:rgba(205,150,105,0.3); margin:8px auto;"></div>
-  <div style="font-size:12px; color:var(--tsum-cyan); font-weight:700;">合計スコア</div>
-  <div class="result-score" id="result-score">0</div>
-  <div class="result-detail" id="result-detail"></div>
-  <div class="result-points" id="result-points">+0 pt</div>
-  <button class="btn" id="retry-btn">タイトルに戻る</button>
+<div id="howto-screen" aria-hidden="true">
+  <div class="result-dialog" role="dialog" aria-labelledby="howto-title">
+    <div class="title" id="howto-title" style="font-size:26px;">あそびかた</div>
+    <div class="howto-body">🍩 スイーツをたくさんつもう！<br>🐹 おじゃまハムスターはよけて！<br>⭐ 星はフィーバータイム！</div>
+    <div style="width:60%; height:1px; background:rgba(205,150,105,0.3); margin:8px auto;"></div>
+    <div style="font-size:13px; color:var(--tsum-cyan); font-weight:700; margin-top:4px;">ヒント</div>
+    <div class="howto-note">🍽️ おさらは左右に動くよ<br>👆 タップでらっかのスピードがアップ<br>⭐ 星を取るとアイテムがまっすぐになるよ<br>🌡️ ずれ度に注意してね</div>
+    <button class="btn" id="howto-close-btn">とじる</button>
+  </div>
+</div>
+<div id="result-screen" aria-hidden="true">
+  <div class="result-dialog" role="dialog" aria-labelledby="result-title">
+    <div class="title" id="result-title" style="font-size:26px;">けっか</div>
+    <div id="result-breakdown" style="font-size:14px; color:var(--ink-soft); line-height:2; margin:8px 0;"></div>
+    <div style="width:60%; height:1px; background:rgba(205,150,105,0.3); margin:8px auto;"></div>
+    <div class="result-score-box">
+      <div style="font-size:12px; color:var(--tsum-cyan); font-weight:700;">合計スコア</div>
+      <div class="result-score" id="result-score">0</div>
+    </div>
+    <div class="result-detail" id="result-detail"></div>
+    <div class="result-points" id="result-points">+0 pt</div>
+    <button class="btn" id="retry-btn">タイトルに戻る</button>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
@@ -649,7 +766,8 @@ function applySfxVolume() {
   SFX_HAMSTER_EAT.volume = v;
   SFX_STAR.volume = v;
   SFX_STAR_GET.volume = v;
-  SFX_RAKKA.volume = v;
+  SFX_GAMEOVER.volume = v;
+  SFX_BUTTON.volume = v;
 }
 
 function playSweetLandSfx() {
@@ -684,73 +802,28 @@ function playStarGetSfx() {
   SFX_STAR_GET.play().catch(() => {});
 }
 
-// 崩壊時の落下音。積んだ個数に応じた秒数だけ再生する。
-const SFX_RAKKA = new Audio('rakka.mp3');
-SFX_RAKKA.preload = 'auto';
-let rakkaStopTimer = null;
-// .volume は最大1.0なので、それ以上大きくするため Web Audio のゲインで増幅する
-const RAKKA_GAIN = 3.0; // 増幅倍率（大きくしたいほど上げる）
-let rakkaAudioCtx = null, rakkaGainNode = null, rakkaRouted = false;
-function ensureRakkaBoost() {
-  if (rakkaRouted) return;
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    rakkaAudioCtx = new AC();
-    const src = rakkaAudioCtx.createMediaElementSource(SFX_RAKKA);
-    rakkaGainNode = rakkaAudioCtx.createGain();
-    rakkaGainNode.gain.value = RAKKA_GAIN;
-    src.connect(rakkaGainNode);
-    rakkaGainNode.connect(rakkaAudioCtx.destination);
-    rakkaRouted = true;
-  } catch (e) { /* 失敗時は素の音量で再生 */ }
-}
-function stopRakkaSfx() {
-  if (rakkaStopTimer) { clearTimeout(rakkaStopTimer); rakkaStopTimer = null; }
-  if (rakkaGainNode && rakkaAudioCtx) {
-    try {
-      rakkaGainNode.gain.cancelScheduledValues(rakkaAudioCtx.currentTime);
-      rakkaGainNode.gain.value = RAKKA_GAIN;
-    } catch (e) {}
-  }
-  if (!SFX_RAKKA.paused) { SFX_RAKKA.pause(); }
-  SFX_RAKKA.currentTime = 0;
-  SFX_RAKKA.volume = 1;
-}
-function playRakkaSfx(count) {
-  stopRakkaSfx();
+// UIボタンの決定音。document への委譲で全ボタン共通に鳴らす
+const SFX_BUTTON = new Audio('button.mp3');
+SFX_BUTTON.preload = 'auto';
+function playButtonSfx() {
   if (!sfxEnabled) return;
-  ensureRakkaBoost();
-  if (rakkaAudioCtx && rakkaAudioCtx.state === 'suspended') rakkaAudioCtx.resume().catch(() => {});
-  // 個数に応じた秒数（1個あたり0.2秒、0.5〜3.0秒にクランプ）
-  const durSec = Math.max(0.5, Math.min(3.0, count * 0.2));
-  SFX_RAKKA.currentTime = 0;
-  SFX_RAKKA.volume = 1;
-  SFX_RAKKA.play().catch(() => {});
-  // 徐々にフェードアウト（序盤は維持し、後半にかけて音量を下げる）
-  if (rakkaGainNode && rakkaAudioCtx) {
-    const t0 = rakkaAudioCtx.currentTime;
-    const g = rakkaGainNode.gain;
-    try {
-      g.cancelScheduledValues(t0);
-      g.setValueAtTime(RAKKA_GAIN, t0);
-      g.setValueAtTime(RAKKA_GAIN, t0 + durSec * 0.3);
-      g.linearRampToValueAtTime(0.0001, t0 + durSec);
-    } catch (e) {}
-  } else {
-    // フォールバック: 要素音量を段階的に下げる
-    let si = 0; const steps = 8;
-    const fadeIv = setInterval(() => {
-      si++;
-      SFX_RAKKA.volume = Math.max(0, 1 - si / steps);
-      if (si >= steps) clearInterval(fadeIv);
-    }, Math.max(30, (durSec * 1000) / steps * 0.7));
-  }
-  rakkaStopTimer = setTimeout(() => {
-    if (!SFX_RAKKA.paused) SFX_RAKKA.pause();
-    SFX_RAKKA.currentTime = 0;
-    rakkaStopTimer = null;
-  }, durSec * 1000);
+  SFX_BUTTON.currentTime = 0;
+  SFX_BUTTON.play().catch(() => {});
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest) return;
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.id === 'pause-giveup') return; // あきらめるはゲームオーバーSEを鳴らすため決定音なし
+  playButtonSfx();
+}, true);
+
+// 崩壊時のゲームオーバー音（ヒットストップ明けに鳴らすジングル）
+const SFX_GAMEOVER = new Audio('gameover.mp3');
+SFX_GAMEOVER.preload = 'auto';
+function playGameoverSfx() {
+  SFX_GAMEOVER.currentTime = 0;
+  SFX_GAMEOVER.play().catch(() => {});
 }
 
 function updatePauseSoundToggleLabel() {
@@ -833,7 +906,7 @@ const FALL_SPEED_SCALE = 1 / 1.2;
 /** 最初のフィーバーになるまでの追加スロー（さらに1.2倍ゆっくり） */
 const PRE_FEVER_SLOW = 1 / 1.2;
 /** フィーバー後: この差分スコアを稼ぐと最高速（＝フィーバー時の速度）に到達する */
-const SCORE_SPEED_SCALE = 4700;
+const SCORE_SPEED_SCALE = 9000;
 /** 最初のフィーバーを既に経験したか（落下速度の段階制御に使用） */
 let hadFirstFever = false;
 /** 最初のフィーバー発動時点のスコア（以降の加速はこの差分で計算） */
@@ -1316,8 +1389,10 @@ function spawnFalling() {
   const baseSpeed = 8;
   const margin = 40 * UNIT;
   const maxSpread = (W / 2) - margin;
-  // 落下位置のブレ（やさしめ）：最大でも画面半分の 55%、30個で最大、序盤は緩やか
-  const spreadT = Math.min(stack.length / 30, 1);
+  // 落下位置のブレ（やさしめ）：1〜2個目は中央固定、3個目から徐々に左右へ。
+  // 最大でも画面半分の 55%、30個で最大、序盤は緩やか（二乗カーブ）
+  const effCount = Math.max(0, stack.length - 1); // stack 0,1（1〜2投目）はブレなし
+  const spreadT = Math.min(effCount / 29, 1);
   const spread = maxSpread * 0.55 * (spreadT * spreadT);
   // フィーバー中は中央固定で落とす（落下中央デバッグ時も同様）
   const x = (invincibleTimer > 0 || debugSweetCenterFixed) ? W / 2 : (W / 2 + (Math.random() - 0.5) * 2 * spread);
@@ -1782,6 +1857,8 @@ if (typeof window !== 'undefined') window.oyatsuCollapseDebug = oyatsuCollapseDe
 // 崩壊演出: ヒットストップ（全停止）と白フラッシュ
 let collapseHitStop = 0;
 let collapseFlash = 0;
+// ヒットストップ明けに鳴らすSE（崩壊個数。null = 予約なし）
+let collapseSfxPendingCount = null;
 
 function triggerCollapse(reasonDetail, extraFaller) {
   const d = reasonDetail && typeof reasonDetail === 'object'
@@ -1806,8 +1883,8 @@ function triggerCollapse(reasonDetail, extraFaller) {
   // 衝撃演出: 一瞬止めてフラッシュ
   collapseHitStop = 0.22;
   collapseFlash = 1;
-  // 崩壊の落下音を個数に応じた秒数だけ再生
-  playRakkaSfx(stackSnapshot.length);
+  // 崩壊SE（ゲームオーバー音）はヒットストップ明けに鳴らす
+  collapseSfxPendingCount = stackSnapshot.length;
 
   const entry = Object.assign({}, d, {
     at: 'collapse',
@@ -1844,8 +1921,8 @@ function startGame() {
   invincibleTimer = 0; nextPowerupStack = POWERUP_FIRST_AT; powerupArmed = false; lastWasTrap = false;
   hadFirstFever = false; feverStartScore = 0;
   partyFx = 0; alignTimer = 0; feverEndPauseArmed = false;
+  collapseHitStop = 0; collapseFlash = 0; collapseSfxPendingCount = null;
   if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
-  stopRakkaSfx();
   playCollapseLog = [];
   if (typeof window !== 'undefined') window.oyatsuPlayCollapseLog = playCollapseLog;
   plateX = W / 2; prevPlateX = W / 2;
@@ -1962,7 +2039,6 @@ function goToTitle() {
   destroyMatterWorld();
   setPaused(false);
   if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
-  stopRakkaSfx();
   document.getElementById('result-screen').style.display = 'none';
   document.getElementById('hud').style.display = 'none';
   document.getElementById('start-screen').style.display = 'flex';
@@ -1990,6 +2066,52 @@ document.getElementById('pause-sound-toggle').addEventListener('click', (e) => {
   sfxEnabled = !sfxEnabled;
   applySfxVolume();
   updatePauseSoundToggleLabel();
+  updateSoundToggleBtn();
+});
+
+// TOP画面の音声オン/オフボタン（一時停止メニューのトグルと状態を共有）
+function updateSoundToggleBtn() {
+  const el = document.getElementById('sound-toggle-btn');
+  if (el) el.classList.toggle('is-off', !sfxEnabled);
+}
+document.getElementById('sound-toggle-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  sfxEnabled = !sfxEnabled;
+  applySfxVolume();
+  updatePauseSoundToggleLabel();
+  updateSoundToggleBtn();
+});
+
+// 一時停止メニュー: あそびかた（howtoダイアログは一時停止モーダルより手前に出る）
+document.getElementById('pause-howto').addEventListener('click', (e) => {
+  e.preventDefault();
+  const el = document.getElementById('howto-screen');
+  el.style.display = 'flex';
+  el.setAttribute('aria-hidden', 'false');
+});
+
+// 一時停止メニュー: あきらめる（強制リザルト）
+document.getElementById('pause-giveup').addEventListener('click', (e) => {
+  e.preventDefault();
+  // フィーバー中でも星SEを止めてからリザルトへ（setPaused(false)での再開を防ぐ）
+  invincibleTimer = 0;
+  if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
+  playGameoverSfx();
+  showResult();
+});
+
+// あそびかたダイアログ
+document.getElementById('howto-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  const el = document.getElementById('howto-screen');
+  el.style.display = 'flex';
+  el.setAttribute('aria-hidden', 'false');
+});
+document.getElementById('howto-close-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  const el = document.getElementById('howto-screen');
+  el.style.display = 'none';
+  el.setAttribute('aria-hidden', 'true');
 });
 
 document.getElementById('debug-hamster-btn').addEventListener('click', (e) => {
@@ -2206,7 +2328,12 @@ function update(dt) {
   if (collapseHitStop > 0) {
     collapseHitStop -= dt;
     collapseFlash = Math.max(0, collapseFlash - dt * 6);
-    return;
+    if (collapseHitStop > 0) return;
+  }
+  // ヒットストップ明け: 予約していた崩壊SE（ゲームオーバー音）を再生
+  if (collapseSfxPendingCount !== null) {
+    playGameoverSfx();
+    collapseSfxPendingCount = null;
   }
   collapseFlash = Math.max(0, collapseFlash - dt * 6);
   // フレームレート非依存スケール（60fps基準）。1フレーム移動量に掛けて端末ごとの速度差を無くす
@@ -2990,7 +3117,7 @@ function ensureSkyClouds() {
       sideFrac: (rnd() * 0.24 - 0.08) * (leftSide ? 1 : -1),
       leftSide,
       swayAmp: (14 + rnd() * 22),            // 左右ゆらゆらの振れ幅(UNIT倍)
-      swaySpeed: 0.12 + rnd() * 0.14,        // 往復の速さ(rad/s) ゆったり
+      swaySpeed: 0.24 + rnd() * 0.28,        // 往復の速さ(rad/s)
       swayPhase: rnd() * Math.PI * 2,
       scale: 0.45 + rnd() * 0.7,
       bobPhase: rnd() * Math.PI * 2,         // 上下のふわふわ
@@ -3050,7 +3177,7 @@ function drawSky() {
     const baseX = cl.leftSide ? cl.sideFrac * W : W + cl.sideFrac * W;
     const sway = Math.sin(now * cl.swaySpeed + cl.swayPhase) * cl.swayAmp * UNIT;
     const x = baseX + sway - cw * 0.5;
-    const bob = Math.sin(now * 0.35 + cl.bobPhase) * 7 * UNIT;
+    const bob = Math.sin(now * 0.7 + cl.bobPhase) * 7 * UNIT;
     const sy = PLATE_Y - (cl.altEff + skyAltOffset) - cameraY + bob;
     if (sy < -ch || sy > H + ch) continue;
     ctx.globalAlpha = 0.85 * amount;
