@@ -936,6 +936,8 @@ let nextPowerupStack = POWERUP_FIRST_AT;
 let powerupArmed = false;
 /** クラブ演出の強さ 0..1（無敵中に上昇、終了でフェードアウト）。背景の暗さ・BGM音量を駆動 */
 let partyFx = 0;
+// フィーバー突入バースト演出（白フラッシュ＋スピードライン＋FEVERバナー）。null = 非表示
+let feverBurst = null;
 /** フィーバー中に踊るハムスターの配置（初回生成して使い回す） */
 let partyDancers = null;
 /** スター取得時の中央整列アニメの残り時間（>0 の間アニメ中） */
@@ -1439,6 +1441,35 @@ function addParticles(x, screenY, color, count) {
   }
 }
 
+// 4条スターのパス（パーティクルとミラーボールのきらめきで共用）
+function drawStarPath(c, x, y, spikes, outerR, innerR, rot) {
+  c.beginPath();
+  for (let i = 0; i < spikes * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = rot + (i * Math.PI) / spikes;
+    const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+    if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+  }
+  c.closePath();
+}
+
+// フィーバー用: 星型パーティクルを花火のように放射
+const STAR_BURST_COLORS = ['#FFD54A', '#FFF6C9', '#FF9BC0', '#9BE8FF', '#FFFFFF'];
+function addStarBurst(x, screenY, count) {
+  for (let i = 0; i < count; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 2 + Math.random() * 5;
+    particles.push({
+      x, screenY,
+      vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 2.5,
+      size: Math.random() * 3 + 2,
+      color: STAR_BURST_COLORS[(Math.random() * STAR_BURST_COLORS.length) | 0],
+      life: 1 + Math.random() * 0.4,
+      star: true, rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+    });
+  }
+}
+
 // Physics constants
 const GRAVITY = 980;       // px/s² (scaled by UNIT later)
 const BOUNCE_RESTITUTION = 0.35;
@@ -1920,7 +1951,7 @@ function startGame() {
   collapseTimer = 0; gameElapsed = 0; maxTowerHeight = 0; maxStackCount = 0; slidingItems = [];
   invincibleTimer = 0; nextPowerupStack = POWERUP_FIRST_AT; powerupArmed = false; lastWasTrap = false;
   hadFirstFever = false; feverStartScore = 0;
-  partyFx = 0; alignTimer = 0; feverEndPauseArmed = false;
+  partyFx = 0; alignTimer = 0; feverEndPauseArmed = false; feverBurst = null;
   collapseHitStop = 0; collapseFlash = 0; collapseSfxPendingCount = null;
   if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
   playCollapseLog = [];
@@ -2240,6 +2271,105 @@ function drawClubFx() {
   const hue = (gameElapsed * 90) % 360;
   ctx.fillStyle = `hsla(${hue}, 90%, 60%, ${0.06 * beat * p})`;
   ctx.fillRect(0, 0, W, H);
+
+  // ミラーボール（ビームの発生源に吊り下げ、ビートで脈動）
+  ctx.globalCompositeOperation = 'source-over';
+  const mbR = 24 * UNIT * (1 + 0.04 * beat);
+  ctx.strokeStyle = `rgba(200,200,220,${(0.7 * p).toFixed(3)})`;
+  ctx.lineWidth = 2 * UNIT;
+  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, cy - mbR); ctx.stroke();
+  ctx.save();
+  ctx.globalAlpha = p;
+  ctx.beginPath(); ctx.arc(cx, cy, mbR, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = '#8f93a8';
+  ctx.fillRect(cx - mbR, cy - mbR, mbR * 2, mbR * 2);
+  // 回転して見えるよう横に流れるファセット格子
+  const cell = mbR * 0.38;
+  const off = (gameElapsed * mbR * 0.8) % cell;
+  ctx.strokeStyle = 'rgba(40,40,60,0.55)';
+  ctx.lineWidth = 1.5 * UNIT;
+  for (let gx = cx - mbR - cell + off; gx < cx + mbR + cell; gx += cell) {
+    ctx.beginPath(); ctx.moveTo(gx, cy - mbR); ctx.lineTo(gx, cy + mbR); ctx.stroke();
+  }
+  for (let gy = cy - mbR; gy < cy + mbR + cell; gy += cell) {
+    ctx.beginPath(); ctx.moveTo(cx - mbR, gy); ctx.lineTo(cx + mbR, gy); ctx.stroke();
+  }
+  // ランダムにキラッと光るファセット
+  for (let k = 0; k < 4; k++) {
+    const fx = cx + Math.sin(gameElapsed * 2.2 + k * 1.7) * mbR * 0.6;
+    const fy = cy + Math.cos(gameElapsed * 1.8 + k * 2.3) * mbR * 0.6;
+    ctx.fillStyle = `rgba(255,255,255,${((0.3 + 0.45 * beat) * p).toFixed(3)})`;
+    ctx.fillRect(fx - cell * 0.4, fy - cell * 0.4, cell * 0.8, cell * 0.8);
+  }
+  // 球体らしさ: 左上ハイライトと右下シェード
+  ctx.fillStyle = 'rgba(255,255,255,0.30)';
+  ctx.beginPath(); ctx.arc(cx - mbR * 0.25, cy - mbR * 0.3, mbR * 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(10,10,30,0.35)';
+  ctx.beginPath(); ctx.arc(cx + mbR * 0.3, cy + mbR * 0.45, mbR * 0.7, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  // 周囲を舞う反射のきらめき（加算）
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 6; k++) {
+    const a = gameElapsed * 1.4 + k * (Math.PI * 2 / 6);
+    const d = mbR * (1.9 + 0.5 * Math.sin(gameElapsed * 2 + k * 2.1));
+    const sx = cx + Math.cos(a) * d;
+    const sy = cy + Math.sin(a) * d * 0.7;
+    const sr = (2 + 1.5 * beat) * UNIT;
+    ctx.fillStyle = `rgba(255,255,255,${((0.25 + 0.5 * beat) * p).toFixed(3)})`;
+    drawStarPath(ctx, sx, sy, 4, sr * 2.4, sr, gameElapsed + k);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// フィーバー突入バースト: 白フラッシュ＋放射スピードライン＋巨大FEVERバナー
+function drawFeverBurst() {
+  if (!feverBurst) return;
+  const t = feverBurst.t;
+  ctx.save();
+  // 白フラッシュ
+  if (t < 0.3) {
+    ctx.fillStyle = `rgba(255,255,255,${(0.85 * (1 - t / 0.3)).toFixed(3)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  // 放射状スピードライン（外へ広がりながらフェード）
+  if (t < 0.6) {
+    const la = 0.75 * (1 - t / 0.6);
+    const cx0 = W / 2, cy0 = H * 0.42;
+    const maxR = Math.hypot(W, H) * 0.6;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = `rgba(255,240,180,${la.toFixed(3)})`;
+    for (let i = 0; i < 22; i++) {
+      const rndA = Math.sin(i * 127.31) * 0.5 + 0.5;
+      const rndB = Math.sin(i * 311.7) * 0.5 + 0.5;
+      const ang = (i / 22) * Math.PI * 2 + rndA * 0.3;
+      const r0 = maxR * (0.30 + 0.25 * rndB + t * 0.9);
+      const r1 = r0 + maxR * (0.18 + 0.22 * rndA);
+      ctx.lineWidth = (1.5 + 2.5 * rndB) * UNIT;
+      ctx.beginPath();
+      ctx.moveTo(cx0 + Math.cos(ang) * r0, cy0 + Math.sin(ang) * r0);
+      ctx.lineTo(cx0 + Math.cos(ang) * r1, cy0 + Math.sin(ang) * r1);
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  // FEVER!! バナー（ぽよんと出て虹色に脈動、最後にフェード）
+  const bIn = Math.min(1, t / 0.45);
+  const scale = easeOutBack(bIn);
+  const alpha = t < 1.0 ? 1 : Math.max(0, 1 - (t - 1.0) / 0.4);
+  ctx.translate(W / 2, H * 0.42);
+  ctx.rotate(-0.06 + Math.sin(t * 10) * 0.04 * (1 - bIn));
+  ctx.scale(scale, scale);
+  ctx.globalAlpha = alpha;
+  ctx.font = `900 ${Math.round(54 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 10 * UNIT;
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.strokeText('FEVER!!', 0, 0);
+  const hue = (gameElapsed * 240) % 360;
+  ctx.fillStyle = `hsl(${hue}, 95%, 58%)`;
+  ctx.fillText('FEVER!!', 0, 0);
   ctx.restore();
 }
 
@@ -2355,6 +2485,11 @@ function update(dt) {
     partyFx = Math.min(1, partyFx + dt * 4);
   } else if (partyFx > 0) {
     partyFx = Math.max(0, partyFx - dt * 1.1);
+  }
+  // フィーバー突入バーストの時間経過
+  if (feverBurst) {
+    feverBurst.t += dt;
+    if (feverBurst.t > 1.4) feverBurst = null;
   }
   // BGM（star.mp3）の音量を partyFx に追従させ、終了時にフェードアウト
   if (partyFx > 0) {
@@ -2532,6 +2667,35 @@ function update(dt) {
             };
             break;
           }
+          // ハムスターが最上段の側面に当たった場合は崩さず、最上段のアイテムを食べるだけ
+          if (falling.type.isTrap && si === stack.length - 1) {
+            const removed = stack.pop();
+            if (removed) {
+              const rx = plateX + removed.relX;
+              const ry = removed.y - cameraY;
+              addParticles(rx, ry, removed.type.color, 9);
+              addParticles(rx, ry, '#FFF8E7', 5);
+            }
+            rebuildStackFootYs();
+            playHamsterEatSfx();
+            mogumoguFx = { worldX: falling.x, worldY: sTop, t: 0, duration: MOGUMOGU_DURATION };
+            const mogX = falling.x;
+            const mogY = falling.screenY;
+            setTimeout(() => { addFloatingText(mogX, mogY - 40, 'もぐ', '#8B6F47'); }, 0);
+            setTimeout(() => { addFloatingText(mogX, mogY - 74, 'もぐ', '#A0785C'); }, 160);
+            setTimeout(() => { addFloatingText(mogX, mogY - 108, '…おいし♪', '#C48B5C'); }, 320);
+            canvas.classList.add('shake');
+            setTimeout(() => canvas.classList.remove('shake'), 200);
+            comboCount = 0;
+            falling = null;
+            targetCameraY = computeTargetCameraY();
+            setTimeout(() => {
+              if (state !== 'collapsed' && state !== 'result') {
+                state = 'falling'; spawnFalling();
+              }
+            }, 500);
+            break;
+          }
           // 当たり判定(colW)でしっかり重なっているか
           const hardHit = (falling.x + fallingHalfCol > sCx - sHalfCol)
             && (falling.x - fallingHalfCol < sCx + sHalfCol);
@@ -2592,7 +2756,8 @@ function update(dt) {
           alignTimer = ALIGN_DURATION;
           playStarGetSfx();
           playStarSfx();
-          addFloatingText(falling.x, landingScreenY - 34, '✨ FEVER! ✨', '#FF8C00');
+          feverBurst = { t: 0 };
+          addStarBurst(falling.x, landingScreenY, 26);
           addParticles(falling.x, landingScreenY, '#FFD54A', 18);
           addParticles(falling.x, landingScreenY, '#FFFFFF', 8);
           canvas.classList.add('shake');
@@ -2723,6 +2888,8 @@ function update(dt) {
         addFloatingText(landX, landingScreenY - 50, rating, ratingColor);
         addFloatingText(landX, landingScreenY - 30, `+${itemScore}`, fever ? '#FFE9A8' : '#5A3A1E');
         addParticles(landX, landingScreenY, falling.type.color, 8);
+        // フィーバー中は着地ごとに星が弾ける
+        if (fever) addStarBurst(landX, landingScreenY, 12);
         document.getElementById('score-display').textContent = score;
         if (stack.length > maxStackCount) {
           maxStackCount = stack.length;
@@ -2878,6 +3045,7 @@ function update(dt) {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.x += p.vx * fs; p.screenY += p.vy * fs; p.vy += 0.15 * fs; p.life -= dt * 2;
+    if (p.star) p.rot += p.vr * fs;
     if (p.life <= 0) particles.splice(i, 1);
   }
 
@@ -3432,11 +3600,16 @@ function draw() {
 
   // Particles (screen space)
   for (const p of particles) {
-    ctx.globalAlpha = p.life;
+    ctx.globalAlpha = Math.min(1, p.life);
     ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.screenY, p.size * UNIT, 0, Math.PI * 2);
-    ctx.fill();
+    if (p.star) {
+      drawStarPath(ctx, p.x, p.screenY, 4, p.size * 1.9 * UNIT, p.size * 0.75 * UNIT, p.rot);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.x, p.screenY, p.size * UNIT, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
 
@@ -3479,6 +3652,9 @@ function draw() {
     ctx.fill();
     ctx.restore();
   }
+
+  // フィーバー突入バースト（最前面）
+  drawFeverBurst();
 
   // 崩壊フラッシュ（白 → 素早くフェードアウト）
   if (collapseFlash > 0) {
