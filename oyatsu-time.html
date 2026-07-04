@@ -68,8 +68,13 @@
   @media (pointer: coarse) {
     #hud { max-width: none; }
   }
+  /* スコアはずれ度メーターと同じ余白（ゲーム枠から10px）で左上に固定 */
   .hud-left-col {
     display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    position: fixed;
+    left: calc(var(--game-left, 0px) + max(10px, env(safe-area-inset-left)));
+    top: calc(var(--game-top, 0px) + max(10px, env(safe-area-inset-top)));
+    z-index: 25;
   }
   .hud-box {
     background: var(--glass-bg);
@@ -78,13 +83,21 @@
     border-radius: 18px; padding: 8px 18px;
     border: 1.5px solid var(--glass-line);
     box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.9);
+    /* 桁が増えても枠は広がらない（文字側を縮める） */
+    width: 96px; box-sizing: border-box;
   }
   .hud-label { font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 0.06em; }
   .hud-value { font-size: 24px; font-weight: 900; color: var(--ink); }
-  /* インゲームのオプションボタン: TOPの音ボタンと同じ不透明ツヤ白の丸ボタン */
+  /* つんだ数はインゲームでは非表示（集計はリザルトで見せる。JSが参照するため要素は残す） */
+  .hud-sub { display: none; }
+  /* インゲームのオプションボタン: TOPの音ボタンと同じ不透明ツヤ白の丸ボタン。
+     余白はずれ度メーターと同じ（ゲーム枠から10px）で右上に固定 */
   #pause-btn {
-    flex-shrink: 0; pointer-events: auto; margin-top: 2px;
-    position: relative; overflow: hidden;
+    pointer-events: auto;
+    position: fixed; overflow: hidden;
+    right: calc(var(--game-left, 0px) + max(10px, env(safe-area-inset-right)));
+    top: calc(var(--game-top, 0px) + max(10px, env(safe-area-inset-top)));
+    z-index: 25;
     width: 38px; height: 38px; border-radius: 50%; border: none;
     background: linear-gradient(180deg, #ffffff 0%, #fff7f0 50%, #ffeadd 100%);
     color: var(--ink); font-size: 17px; line-height: 1;
@@ -376,17 +389,27 @@
   #debug-sweet-center-btn.on {
     background: rgba(255, 235, 210, 0.96); border-color: rgba(200, 120, 60, 0.5); color: #8B4513;
   }
-  /* 右下デバッグピル4つは既定で非表示（?debug=1 のときだけ表示） */
+  #debug-ufo-btn {
+    position: fixed; right: calc(var(--game-left, 0px) + max(8px, env(safe-area-inset-right)));
+    bottom: calc(var(--game-top, 0px) + max(8px, env(safe-area-inset-bottom)) + 168px);
+    z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--glass-line);
+    background: linear-gradient(150deg, rgba(255,255,255,0.8), rgba(255,255,255,0.55)); backdrop-filter: blur(12px) saturate(1.4); -webkit-backdrop-filter: blur(12px) saturate(1.4); color: var(--ink-soft); cursor: pointer;
+    box-shadow: 0 3px 12px rgba(205,150,105,0.22);
+  }
+  /* 右下デバッグピルは既定で非表示（?debug=1 のときだけ表示） */
   #debug-colliders-btn,
   #debug-log-btn,
   #debug-hamster-btn,
-  #debug-sweet-center-btn {
+  #debug-sweet-center-btn,
+  #debug-ufo-btn {
     display: none;
   }
   html.show-debug-ui #debug-colliders-btn,
   html.show-debug-ui #debug-log-btn,
   html.show-debug-ui #debug-hamster-btn,
-  html.show-debug-ui #debug-sweet-center-btn {
+  html.show-debug-ui #debug-sweet-center-btn,
+  html.show-debug-ui #debug-ufo-btn {
     display: block !important;
   }
   .debug-log-modal {
@@ -484,13 +507,17 @@
 <canvas id="game"></canvas>
 <button type="button" id="debug-log-btn">ログ</button>
 <button type="button" id="debug-hamster-btn" aria-pressed="true">ハムスター ON</button>
+<button type="button" id="debug-ufo-btn">UFO呼ぶ</button>
 <button type="button" id="debug-sweet-center-btn" aria-pressed="false">落下中央 OFF</button>
 <button type="button" id="debug-colliders-btn" aria-pressed="false">コライダー OFF</button>
 <div id="ui-overlay">
   <div id="hud" style="display:none;">
     <div class="hud-left-col">
-      <div class="hud-box"><div class="hud-label">スコア</div><div class="hud-value" id="score-display">0</div></div>
-      <div class="hud-box"><div class="hud-label">つんだ数</div><div class="hud-value" id="count-display">0</div></div>
+      <div class="hud-box">
+        <div class="hud-label">スコア</div>
+        <div class="hud-value" id="score-display">0</div>
+        <div class="hud-sub">つんだ数 <span id="count-display">0</span></div>
+      </div>
     </div>
     <button type="button" id="pause-btn" aria-label="一時停止"><span class="pause-icon"></span></button>
   </div>
@@ -730,6 +757,7 @@ const IMG_STAR     = loadImage('star.png');
 const IMG_BATTLE_BG = loadImage('battle_bg.png');
 const IMG_CLOUD1 = loadImage('cloude01.png');
 const IMG_CLOUD2 = loadImage('cloude02.png');
+const IMG_UFO = loadImage('ufo.png');
 
 const SFX_LAND_SWEET = new Audio('pyon1.mp3');
 SFX_LAND_SWEET.preload = 'auto';
@@ -938,6 +966,62 @@ let powerupArmed = false;
 let partyFx = 0;
 // フィーバー突入バースト演出（白フラッシュ＋スピードライン＋FEVERバナー）。null = 非表示
 let feverBurst = null;
+
+// --- UFOおじゃま ---
+// 飛来してライトを2秒照らし、光が当たった積みアイテムを回収していく
+const UFO_LIGHT_DURATION = 2.0;   // ライト照射時間（秒）
+const UFO_GRAB_INTERVAL = 0.55;   // 回収の間隔（秒）
+const UFO_BEAM_HALF_TOP = 16;     // ビーム上端の半幅（UNIT倍）
+const UFO_BEAM_GROW = 0.22;       // 下に向かって広がる率（px/px）
+const UFO_BEAM_LENGTH = 290;      // ビームの届く長さ（UNIT倍）
+const UFO_FLY_IN_SEC = 0.3;       // 出現アニメの尺（秒）
+const UFO_FADE_IN_SEC = 0.1;      // フェードインの尺（秒）
+const UFO_ABDUCT_ANIM_SEC = 0.5;  // 吸い込みアニメの長さ（秒）
+let ufo = null;                   // {phase:'in'|'light'|'out', t, x, y, dir, fromX, targetX, nextGrabT}
+let ufoAbductions = [];           // 吸い込まれ演出中のアイテム
+
+function spawnUfo() {
+  if (ufo) return;
+  const dir = Math.random() < 0.5 ? 1 : -1; // 1: 左上から入る
+  const top = stack[stack.length - 1];
+  const towerTopScreenY = top ? (top.y - top.type.height * UNIT - cameraY) : (PLATE_Y - cameraY);
+  const offsetX = (Math.random() - 0.5) * 110 * UNIT; // お皿中心からの狙いのズレ（追尾中も維持）
+  const targetX = plateX + offsetX;
+  const targetY = Math.max(48 * UNIT, Math.min(H * 0.36, towerTopScreenY - 170 * UNIT));
+  // 画面上辺の遠く（小さく・薄く）から弧を描いて降りてくる
+  const fromX = targetX - dir * W * 0.5;
+  const fromY = -70 * UNIT;
+  ufo = {
+    phase: 'in', t: 0, dir,
+    fromX, fromY,
+    ctrlX: targetX - dir * W * 0.12,   // 2次ベジェの制御点（ホバー位置の少し下を通って弧に）
+    ctrlY: targetY + 70 * UNIT,
+    targetX, targetY, offsetX,
+    x: fromX, y: fromY,
+    scale: 0.35, alpha: 0,
+    nextGrabT: 0.35,
+  };
+}
+
+// ビームに当たっているアイテムを上から順に1個回収する
+function ufoTryGrab() {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const s = stack[i];
+    const cy = s.y - s.type.height * UNIT * 0.5 - cameraY;
+    if (cy <= ufo.y) continue; // UFOより上には光は当たらない
+    if (cy > ufo.y + UFO_BEAM_LENGTH * UNIT) continue; // ビームの届く範囲外
+    const half = UFO_BEAM_HALF_TOP * UNIT + (cy - ufo.y) * UFO_BEAM_GROW;
+    const cx = plateX + s.relX + stackItemSwayDxAt(i);
+    if (Math.abs(cx - ufo.x) > half) continue;
+    stack.splice(i, 1);
+    rebuildStackFootYs();
+    ufoAbductions.push({ type: s.type, x: cx, y: s.y - cameraY, t: 0 });
+    addParticles(cx, cy, '#AEFCFF', 8);
+    playPyonPooled(0.7);
+    comboCount = 0;
+    return;
+  }
+}
 /** フィーバー中に踊るハムスターの配置（初回生成して使い回す） */
 let partyDancers = null;
 /** スター取得時の中央整列アニメの残り時間（>0 の間アニメ中） */
@@ -985,15 +1069,6 @@ let cameraY = 0;       // how much the view scrolls up
 let targetCameraY = 0;  // smooth target
 let collapseCameraSmoothed = null; // collapse: eased framing target (starts at play cameraY)
 
-// Background
-const bgParticles = [];
-for (let i = 0; i < 15; i++) {
-  bgParticles.push({
-    x: Math.random() * 420, y: Math.random() * 800,
-    size: Math.random() * 3 + 1, speed: Math.random() * 0.3 + 0.1,
-    alpha: Math.random() * 0.4 + 0.1, phase: Math.random() * Math.PI * 2
-  });
-}
 
 function handleViewportResize() {
   const prevW = W, prevUnit = UNIT;
@@ -1407,15 +1482,20 @@ function spawnFalling() {
     return;
   }
 
-  // Trap chance: 積み3個から上昇、最大約42%（無敵中はトラップを出さない）
-  // 直前がトラップなら連続では出さない（ハムスターの連続投下を防ぐ）
-  let type;
-  const trapChance = stack.length >= 3 ? Math.min((stack.length - 2) * 0.07, 0.42) : 0;
-  if (debugHamsterEnabled && invincibleTimer <= 0 && !lastWasTrap && Math.random() < trapChance) {
-    type = TRAP_TYPE;
-  } else {
-    type = OYATSU_TYPES[Math.floor(Math.random() * OYATSU_TYPES.length)];
+  // お邪魔枠（ハムスター/UFO共通）の抽選: 積み3個から上昇、最大42%。
+  // 無敵中は出さない。直前がお邪魔なら連続では出さない。
+  // 当選時の内訳: 積み4個以上なら 30% で UFO（この番はアイテムを落とさずUFOが来る）、それ以外はハムスター
+  let type = null;
+  const jamaChance = stack.length >= 3 ? Math.min((stack.length - 2) * 0.07, 0.42) : 0;
+  if (invincibleTimer <= 0 && !lastWasTrap && Math.random() < jamaChance) {
+    if (!ufo && stack.length >= 4 && Math.random() < 0.30) {
+      spawnUfo();
+      lastWasTrap = true; // UFOの直後にハムスターを出さない
+      return; // UFOが去ったら次の落下が再開される
+    }
+    if (debugHamsterEnabled) type = TRAP_TYPE;
   }
+  if (!type) type = OYATSU_TYPES[Math.floor(Math.random() * OYATSU_TYPES.length)];
   lastWasTrap = (type === TRAP_TYPE);
 
   // 落下速度：アイテム毎の重さ補正を撤廃して一律。全体を少し遅く（1.2倍ゆっくり）
@@ -1429,6 +1509,14 @@ function spawnFalling() {
 
 function addFloatingText(x, screenY, text, color, pinY) {
   floatingTexts.push({ x, screenY, text, color, life: 1, pinY: !!pinY });
+}
+
+// スコア表示の更新。枠幅は固定なので、桁が増えたら文字を縮めて収める
+function updateScoreDisplay(v) {
+  const el = document.getElementById('score-display');
+  const s = String(v);
+  el.textContent = s;
+  el.style.fontSize = s.length <= 5 ? '' : s.length === 6 ? '20px' : s.length === 7 ? '17px' : '15px';
 }
 
 function addParticles(x, screenY, color, count) {
@@ -1952,6 +2040,7 @@ function startGame() {
   invincibleTimer = 0; nextPowerupStack = POWERUP_FIRST_AT; powerupArmed = false; lastWasTrap = false;
   hadFirstFever = false; feverStartScore = 0;
   partyFx = 0; alignTimer = 0; feverEndPauseArmed = false; feverBurst = null;
+  ufo = null; ufoAbductions = [];
   collapseHitStop = 0; collapseFlash = 0; collapseSfxPendingCount = null;
   if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
   playCollapseLog = [];
@@ -1963,7 +2052,7 @@ function startGame() {
   targetCameraY = cam0;
   collapseCameraSmoothed = null;
   isDragging = false;
-  document.getElementById('score-display').textContent = '0';
+  updateScoreDisplay(0);
   document.getElementById('count-display').textContent = '0';
   document.getElementById('start-screen').style.display = 'none';
   document.getElementById('result-screen').style.display = 'none';
@@ -1976,6 +2065,7 @@ function startGame() {
 
 function showResult() {
   state = 'result'; falling = null; mogumoguFx = null;
+  ufo = null; ufoAbductions = [];
   destroyMatterWorld();
   collapseCameraSmoothed = null;
   setPaused(false);
@@ -2151,6 +2241,12 @@ document.getElementById('debug-hamster-btn').addEventListener('click', (e) => {
   updateDebugHamsterButton();
 });
 
+// デバッグ: UFOを即時召喚（プレイ中のみ）
+document.getElementById('debug-ufo-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  if (state === 'falling' && !ufo) spawnUfo();
+});
+
 document.getElementById('debug-sweet-center-btn').addEventListener('click', (e) => {
   e.preventDefault();
   debugSweetCenterFixed = !debugSweetCenterFixed;
@@ -2223,17 +2319,6 @@ function drawPlate(screenPlateY) {
   ctx.ellipse(plateX, screenPlateY, PLATE_W * 0.45, PLATE_H * 0.4, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-}
-
-function drawBackground() {
-  // 全パーティクルを単一パスで描画（fill 呼び出し 15 回→1 回に削減）
-  ctx.fillStyle = 'rgba(255,200,150,0.22)';
-  ctx.beginPath();
-  for (const p of bgParticles) {
-    ctx.moveTo((p.x + p.size) * UNIT, p.y * UNIT);
-    ctx.arc(p.x * UNIT, p.y * UNIT, p.size * UNIT, 0, Math.PI * 2);
-  }
-  ctx.fill();
 }
 
 // クラブ/パーティー演出。partyFx(0..1) に応じて背景を暗くし、回転する色付きスポットライトとビートで盛り上げる
@@ -2318,6 +2403,79 @@ function drawClubFx() {
     ctx.fillStyle = `rgba(255,255,255,${((0.25 + 0.5 * beat) * p).toFixed(3)})`;
     drawStarPath(ctx, sx, sy, 4, sr * 2.4, sr, gameElapsed + k);
     ctx.fill();
+  }
+  ctx.restore();
+}
+
+// UFO本体・トラクタービーム・吸い込まれるアイテムの描画
+function drawUfo() {
+  // 回収されたアイテムがUFOへ吸い込まれていく
+  for (const a of ufoAbductions) {
+    const k = Math.min(1, a.t / UFO_ABDUCT_ANIM_SEC);
+    const tx = ufo ? ufo.x : a.x;
+    const ty = ufo ? ufo.y : -60;
+    const x = a.x + (tx - a.x) * k * k;
+    const y = a.y + (ty - a.y) * k * k;
+    const sc = 1 - 0.75 * k;
+    ctx.save();
+    ctx.globalAlpha = 1 - k * 0.85;
+    drawOyatsu(a.type, x, y, k * 4, sc, sc, 0);
+    ctx.restore();
+  }
+  if (!ufo) return;
+  const sc = ufo.scale == null ? 1 : ufo.scale;
+  const bob = Math.sin(gameElapsed * 3.1) * 4 * UNIT * sc;
+  const x = ufo.x, y = ufo.y + bob;
+  ctx.save();
+  ctx.globalAlpha = ufo.alpha == null ? 1 : ufo.alpha;
+  // トラクタービーム（ちらつく光の台形。先端に向かって透過するグラデーション）
+  if (ufo.phase === 'light') {
+    const bottomY = y + UFO_BEAM_LENGTH * UNIT;
+    const halfTop = UFO_BEAM_HALF_TOP * UNIT;
+    const halfBot = halfTop + (bottomY - y) * UFO_BEAM_GROW;
+    const flick = 0.7 + 0.3 * Math.sin(gameElapsed * 16);
+    const grad = ctx.createLinearGradient(0, y, 0, bottomY);
+    grad.addColorStop(0, `rgba(174,252,255,${(0.5 * flick).toFixed(3)})`);
+    grad.addColorStop(0.55, `rgba(174,252,255,${(0.3 * flick).toFixed(3)})`);
+    grad.addColorStop(1, 'rgba(174,252,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(x - halfTop, y);
+    ctx.lineTo(x + halfTop, y);
+    ctx.lineTo(x + halfBot, bottomY);
+    ctx.lineTo(x - halfBot, bottomY);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // 機体。飛来中は遠近感のためスケールが小さい
+  if (IMG_UFO.complete && IMG_UFO.naturalWidth > 0) {
+    // ufo.png（256x227）。ビームの根元(y)が機体下部あたりに来るよう少し上へずらす
+    const uw = 96 * UNIT * sc;
+    const uh = uw * (IMG_UFO.naturalHeight / IMG_UFO.naturalWidth);
+    ctx.drawImage(IMG_UFO, x - uw / 2, y - uh * 0.62, uw, uh);
+  } else {
+    // フォールバック: 画像未ロード時はベクター描画（ソーサー＋ドーム＋点滅ランプ）
+    const rw = 34 * UNIT * sc, rh = 12 * UNIT * sc;
+    ctx.fillStyle = 'rgba(190,240,255,0.9)';
+    ctx.beginPath();
+    ctx.arc(x, y - rh * 0.5, rw * 0.45, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#9aa3b8';
+    ctx.beginPath();
+    ctx.ellipse(x, y, rw, rh, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(x - rw * 0.25, y - rh * 0.3, rw * 0.5, rh * 0.45, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    for (let k = -2; k <= 2; k++) {
+      const lx = x + k * rw * 0.38;
+      const on = Math.sin(gameElapsed * 6 + k * 1.9) > 0;
+      ctx.fillStyle = on ? '#ffe066' : 'rgba(255,224,102,0.25)';
+      ctx.beginPath();
+      ctx.arc(lx, y + rh * 0.35, 3.2 * UNIT * sc, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.restore();
 }
@@ -2491,6 +2649,51 @@ function update(dt) {
     feverBurst.t += dt;
     if (feverBurst.t > 1.4) feverBurst = null;
   }
+
+  // --- UFOおじゃまの進行 ---
+  if (ufo) {
+    ufo.t += dt;
+    if (ufo.phase === 'in') {
+      // 0.3秒で弧を描いて飛来（イージング＋遠近スケール）、0.1秒でフェードイン
+      const k = Math.min(1, ufo.t / UFO_FLY_IN_SEC);
+      const e = 1 - Math.pow(1 - k, 3);
+      const mt = 1 - e;
+      ufo.x = mt * mt * ufo.fromX + 2 * mt * e * ufo.ctrlX + e * e * ufo.targetX;
+      ufo.y = mt * mt * ufo.fromY + 2 * mt * e * ufo.ctrlY + e * e * ufo.targetY;
+      ufo.scale = 0.35 + 0.65 * e;
+      ufo.alpha = Math.min(1, ufo.t / UFO_FADE_IN_SEC);
+      if (k >= 1) { ufo.phase = 'light'; ufo.t = 0; ufo.nextGrabT = 0.35; ufo.scale = 1; ufo.alpha = 1; }
+    } else if (ufo.phase === 'light') {
+      if (state !== 'falling' || invincibleTimer > 0) {
+        // 崩壊やフィーバー開始で中断して退散
+        ufo.phase = 'out'; ufo.t = 0;
+      } else {
+        // プレイヤーがよけても、遅れてゆっくり追いかけてくる
+        const chaseX = plateX + ufo.offsetX;
+        ufo.x += (chaseX - ufo.x) * Math.min(1, dt * 1.0);
+        while (ufo.t >= ufo.nextGrabT && ufo.nextGrabT <= UFO_LIGHT_DURATION) {
+          ufoTryGrab();
+          ufo.nextGrabT += UFO_GRAB_INTERVAL;
+        }
+        if (ufo.t >= UFO_LIGHT_DURATION) { ufo.phase = 'out'; ufo.t = 0; }
+      }
+    } else if (ufo.phase === 'out') {
+      const exitX = ufo.dir === 1 ? W + 90 * UNIT : -90 * UNIT;
+      ufo.x += (exitX - ufo.x) * Math.min(1, dt * 3.2);
+      ufo.y -= 60 * UNIT * dt;
+      if (ufo.t >= 1.0) {
+        ufo = null;
+        // UFOが落下の順番を使っていた場合は次の落下を再開
+        if (state === 'falling' && !falling) spawnFalling();
+      }
+    }
+  }
+  // 吸い込みアニメーションの時間経過
+  for (let i = ufoAbductions.length - 1; i >= 0; i--) {
+    const a = ufoAbductions[i];
+    a.t += dt;
+    if (a.t >= UFO_ABDUCT_ANIM_SEC) ufoAbductions.splice(i, 1);
+  }
   // BGM（star.mp3）の音量を partyFx に追従させ、終了時にフェードアウト
   if (partyFx > 0) {
     SFX_STAR.volume = (sfxEnabled ? 1 : 0) * partyFx;
@@ -2560,12 +2763,6 @@ function update(dt) {
         break;
       }
     }
-  }
-
-  // Background
-  for (const p of bgParticles) {
-    p.y -= p.speed * fs;
-    if (p.y < -10) { p.y = 800; p.x = Math.random() * 420; }
   }
 
   // Camera
@@ -2890,7 +3087,7 @@ function update(dt) {
         addParticles(landX, landingScreenY, falling.type.color, 8);
         // フィーバー中は着地ごとに星が弾ける
         if (fever) addStarBurst(landX, landingScreenY, 12);
-        document.getElementById('score-display').textContent = score;
+        updateScoreDisplay(score);
         if (stack.length > maxStackCount) {
           maxStackCount = stack.length;
         }
@@ -3440,7 +3637,6 @@ function draw() {
       }
     }
   }
-  drawBackground();
   drawClubFx();
   drawPartyDancers();
 
@@ -3597,6 +3793,9 @@ function draw() {
     drawOyatsu(si.type, si.x, si.screenY, si.angle);
   }
   ctx.globalAlpha = 1;
+
+  // UFO（機体・ビーム・吸い込み演出）
+  drawUfo();
 
   // Particles (screen space)
   for (const p of particles) {
