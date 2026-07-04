@@ -6,6 +6,24 @@
 <title>スイーツムツム 🍩</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap');
+  :root {
+    /* ライト＆グラスモーフィズムテーマ（白ベース × コーラルアクセント） */
+    --ink: #5b3a26;            /* 見出し・数値のダークテキスト（焦げ茶） */
+    --ink-soft: #9c7a5f;       /* 補助テキスト（ミルクチョコ） */
+    --accent: #f0648e;         /* コーラルアクセント（ラベル・タイトル） */
+    --tsum-pink: #ff7b8e;
+    --tsum-pink-light: #ffb08c;
+    --tsum-pink-dark: #ed5290;
+    --tsum-pink-shadow: #d94f86;
+    --tsum-cyan: #2bb39a;
+    --tsum-green: #66d97a;
+    /* グラスモーフィズム共通 */
+    --glass-bg: linear-gradient(150deg, rgba(255,255,255,0.72), rgba(255,255,255,0.42));
+    --glass-bg-strong: linear-gradient(160deg, rgba(255,255,255,0.88), rgba(255,255,255,0.66));
+    --glass-line: rgba(255, 255, 255, 0.9);
+    --glass-blur: blur(16px) saturate(1.5);
+    --glass-shadow: 0 8px 28px rgba(205,150,105,0.28);
+  }
   * {
     margin: 0; padding: 0; box-sizing: border-box;
     -webkit-touch-callout: none;
@@ -16,7 +34,11 @@
   }
   body {
     font-family: 'Zen Maru Gothic', sans-serif;
-    background: linear-gradient(180deg, #FFF5E6 0%, #FFE4CC 50%, #FFDAB9 100%);
+    background:
+      radial-gradient(110% 80% at 85% 90%, rgba(255,214,190,0.5) 0%, rgba(255,214,190,0) 55%),
+      radial-gradient(100% 75% at 12% 10%, rgba(214,236,255,0.55) 0%, rgba(214,236,255,0) 50%),
+      radial-gradient(80% 60% at 70% 25%, rgba(255,224,236,0.45) 0%, rgba(255,224,236,0) 55%),
+      linear-gradient(165deg, #ffffff 0%, #f6f2fb 45%, #efe7f7 100%);
     overflow: hidden;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
@@ -24,9 +46,18 @@
     height: 100dvh; width: 100vw;
   }
   canvas { display: block; margin: 0 auto; touch-action: none; }
+  /* PC（マウス環境）はスマホ風の縦長固定フレームとして枠飾りを付ける */
+  @media (pointer: fine) {
+    canvas {
+      border-radius: 24px;
+      border: 2px solid var(--glass-line);
+      box-shadow: 0 20px 50px rgba(205,150,105,0.35), 0 4px 14px rgba(205,150,105,0.2);
+    }
+  }
   #ui-overlay {
     position: absolute; top: 0; left: 0; right: 0; bottom: 0;
     pointer-events: none; display: flex; flex-direction: column; align-items: center;
+    padding-top: var(--game-top, 0px);
   }
   #hud {
     display: flex; justify-content: space-between; align-items: flex-start;
@@ -41,108 +72,205 @@
     display: flex; flex-direction: column; gap: 8px; pointer-events: none;
   }
   .hud-box {
-    background: rgba(255,255,255,0.85); backdrop-filter: blur(8px);
-    border-radius: 16px; padding: 8px 16px;
-    box-shadow: 0 2px 12px rgba(200,150,100,0.2);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 18px; padding: 8px 18px;
+    border: 1.5px solid var(--glass-line);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.9);
   }
-  .hud-label { font-size: 11px; color: #C48B5C; font-weight: 700; letter-spacing: 0.05em; }
-  .hud-value { font-size: 24px; font-weight: 900; color: #8B5E3C; }
+  .hud-label { font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 0.06em; }
+  .hud-value { font-size: 24px; font-weight: 900; color: var(--ink); }
   #pause-btn {
     flex-shrink: 0; pointer-events: auto; margin-top: 2px;
-    width: 44px; height: 44px; border-radius: 14px; border: 1px solid rgba(139,94,60,0.25);
-    background: rgba(255,255,255,0.92); color: #8B5E3C; font-size: 20px; line-height: 1;
-    cursor: pointer; box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+    width: 46px; height: 46px; border-radius: 16px; border: 1.5px solid var(--glass-line);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    color: var(--ink); font-size: 20px; line-height: 1;
+    cursor: pointer; box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.9);
     font-family: inherit; display: flex; align-items: center; justify-content: center;
   }
   #pause-btn:active { transform: scale(0.96); }
   .pause-modal {
     position: fixed; inset: 0; z-index: 45; display: none;
     align-items: center; justify-content: center; padding: 24px;
-    background: rgba(60, 40, 30, 0.45); backdrop-filter: blur(6px);
+    background: rgba(250, 243, 235, 0.5); backdrop-filter: blur(10px) saturate(1.2);
+    -webkit-backdrop-filter: blur(10px) saturate(1.2);
     pointer-events: auto;
   }
   .pause-modal.is-open { display: flex; }
   .pause-modal-dialog {
-    width: 100%; max-width: 300px; background: linear-gradient(180deg, #FFFDF8 0%, #FFF5E8 100%);
-    border-radius: 24px; padding: 28px 24px; text-align: center;
-    box-shadow: 0 12px 40px rgba(100,60,40,0.25); border: 1px solid rgba(212,165,116,0.4);
+    width: 100%; max-width: 300px;
+    background: var(--glass-bg-strong);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 26px; padding: 28px 24px; text-align: center;
+    box-shadow: 0 20px 50px rgba(205,150,105,0.35), inset 0 1px 0 rgba(255,255,255,0.95);
+    border: 1.5px solid var(--glass-line);
   }
   .pause-modal-title {
-    font-size: 22px; font-weight: 900; color: #8B5E3C; margin-bottom: 20px;
+    font-size: 22px; font-weight: 900; color: var(--ink);
+    margin-bottom: 20px;
   }
   .btn-pause-option {
     width: 100%; margin-bottom: 12px; padding: 14px 16px; border-radius: 16px;
-    border: 2px solid rgba(196,139,92,0.45); background: rgba(255,255,255,0.95);
-    color: #8B5E3C; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer;
+    border: none; background: rgba(255,255,255,0.55);
+    color: var(--ink); font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(205,150,105,0.18);
   }
+  .btn-pause-option:active { transform: translateY(1px); }
   .btn-pause-resume {
-    width: 100%; margin-top: 8px; padding: 14px 16px; border-radius: 50px; border: none;
-    background: linear-gradient(135deg, #FF9A6C, #FF7043); color: #fff;
-    font-size: 18px; font-weight: 900; font-family: inherit; cursor: pointer;
-    box-shadow: 0 4px 0 #D4603A, 0 6px 20px rgba(255,112,67,0.25);
+    width: 100%; margin-top: 8px; padding: 14px 16px; border-radius: 50px;
+    border: none;
+    background: linear-gradient(180deg, var(--tsum-pink-light) 0%, var(--tsum-pink) 45%, var(--tsum-pink-dark) 100%);
+    color: #fff; font-size: 18px; font-weight: 900; font-family: inherit; cursor: pointer;
+    text-shadow: 0 2px 0 rgba(178,58,143,0.55);
+    box-shadow: 0 5px 0 var(--tsum-pink-shadow), 0 8px 20px rgba(40,10,92,0.35), inset 0 2px 0 rgba(255,255,255,0.5);
   }
-  .btn-pause-resume:active { transform: translateY(2px); box-shadow: 0 2px 0 #D4603A; }
+  .btn-pause-resume:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--tsum-pink-shadow), inset 0 2px 0 rgba(255,255,255,0.5); }
   #start-screen, #result-screen {
-    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    position: absolute;
+    top: var(--game-top, 0px); bottom: var(--game-top, 0px);
+    left: var(--game-left, 0px); right: var(--game-left, 0px);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     pointer-events: auto; z-index: 10;
   }
-  #start-screen { background: linear-gradient(180deg, #FFF8F0 0%, #FFE8D0 100%); }
-  #result-screen { background: rgba(255,245,230,0.95); backdrop-filter: blur(12px); display: none; }
-  .title { font-size: 42px; font-weight: 900; color: #8B5E3C; text-shadow: 0 3px 0 #D4A574, 0 6px 12px rgba(139,94,60,0.15); margin-bottom: 8px; }
-  .subtitle { font-size: 16px; color: #C48B5C; font-weight: 700; margin-bottom: 12px; }
-  .how-to { font-size: 13px; color: #A0785C; margin-bottom: 28px; text-align: center; line-height: 1.7; }
+  /* PC ではゲームフレームの角丸に合わせる */
+  @media (pointer: fine) {
+    #start-screen, #result-screen {
+      border-radius: 24px; overflow: hidden;
+      border: 2px solid var(--glass-line);
+      box-shadow: 0 20px 50px rgba(205,150,105,0.35);
+    }
+  }
+  #start-screen {
+    /* トップ画像を全面背景に。文字の可読性のため上下に白系の薄いスクリムを重ねる */
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.02) 26%, rgba(255,255,255,0.02) 58%, rgba(255,255,255,0.45) 100%),
+      url('top_image.png') center / cover no-repeat,
+      linear-gradient(180deg, #ffffff 0%, #f0e9f8 100%);
+  }
+  #result-screen {
+    background:
+      radial-gradient(90% 60% at 50% 10%, rgba(255,214,190,0.4) 0%, rgba(255,214,190,0) 55%),
+      linear-gradient(175deg, #ffffff 0%, #f7f2fb 55%, #f0e6f5 100%);
+    backdrop-filter: blur(12px); display: none;
+  }
+  .title {
+    font-size: 44px; font-weight: 900; color: var(--accent);
+    text-shadow: 0 2px 0 rgba(255,255,255,0.9), 0 6px 18px rgba(240,100,142,0.3);
+    letter-spacing: 0.02em; margin-bottom: 8px;
+  }
+  #title-logo {
+    width: min(78%, 330px); height: auto;
+    filter: drop-shadow(0 8px 18px rgba(205,150,105,0.4)) drop-shadow(0 2px 4px rgba(255,255,255,0.6));
+    animation: float 2.6s ease-in-out infinite;
+    margin-bottom: 4px;
+    pointer-events: none;
+  }
+  .subtitle {
+    font-size: 16px; color: #fff; font-weight: 700; margin-bottom: 12px;
+    text-shadow: 0 1px 3px rgba(125,80,50,0.75), 0 0 12px rgba(125,80,50,0.5);
+  }
+  .how-to {
+    font-size: 13px; color: var(--ink); margin-bottom: 28px; text-align: center; line-height: 1.7;
+    background: var(--glass-bg); border: 1.5px solid var(--glass-line); border-radius: 16px;
+    padding: 12px 18px;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.9);
+  }
   .btn {
-    background: linear-gradient(135deg, #FF9A6C, #FF7043); color: #fff; border: none;
-    border-radius: 50px; padding: 16px 48px; font-size: 20px; font-weight: 900;
+    position: relative; overflow: hidden;
+    background: linear-gradient(180deg, var(--tsum-pink-light) 0%, var(--tsum-pink) 45%, var(--tsum-pink-dark) 100%);
+    color: #fff; border: none;
+    border-radius: 50px; padding: 18px 54px; font-size: 22px; font-weight: 900;
     font-family: 'Zen Maru Gothic', sans-serif; cursor: pointer;
-    box-shadow: 0 4px 0 #D4603A, 0 8px 24px rgba(255,112,67,0.3);
+    text-shadow: 0 2px 0 rgba(178,58,143,0.6);
+    box-shadow: 0 7px 0 var(--tsum-pink-shadow), 0 16px 32px rgba(205,150,105,0.4), inset 0 3px 0 rgba(255,255,255,0.55);
     transition: transform 0.1s, box-shadow 0.1s; pointer-events: auto;
   }
-  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #D4603A, 0 2px 8px rgba(255,112,67,0.3); }
-  .deco-emoji { font-size: 48px; margin-bottom: 16px; animation: float 2s ease-in-out infinite; }
+  .btn::before {
+    content: ''; position: absolute; top: 5px; left: 12%; right: 12%; height: 38%;
+    border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
+    pointer-events: none;
+  }
+  .btn:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--tsum-pink-shadow), 0 4px 10px rgba(0,0,0,0.35), inset 0 3px 0 rgba(255,255,255,0.55); }
+  .deco-emoji { font-size: 48px; margin-bottom: 16px; animation: float 2s ease-in-out infinite; position: relative; z-index: 2; }
   @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-  .result-score { font-size: 56px; font-weight: 900; color: #FF7043; text-shadow: 0 2px 0 #D4603A; margin: 8px 0; }
-  .result-detail { font-size: 14px; color: #A0785C; margin-bottom: 4px; }
-  .result-points { font-size: 18px; font-weight: 900; color: #4CAF50; background: rgba(76,175,80,0.1); padding: 8px 24px; border-radius: 20px; margin: 16px 0 32px; }
+  /* キラキラ（トゥインクル星）パーティクル装飾 */
+  .tsum-sparkles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  .tsum-sparkle {
+    position: absolute;
+    /* 4条スター形状 */
+    clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+    background: radial-gradient(circle at 50% 50%, #fff 0%, var(--spark, #ffe9a8) 45%, rgba(255,255,255,0) 80%);
+    filter: drop-shadow(0 0 6px var(--spark, #ffe9a8));
+    opacity: 0;
+    animation: sparkleTwinkle ease-in-out infinite;
+    will-change: transform, opacity;
+  }
+  @keyframes sparkleTwinkle {
+    0%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+    18% { opacity: 1; transform: scale(1) rotate(25deg); }
+    38% { opacity: 0.55; transform: scale(0.65) rotate(45deg); }
+    58% { opacity: 1; transform: scale(0.95) rotate(70deg); }
+    82% { opacity: 0; transform: scale(0.25) rotate(90deg); }
+  }
+  #start-screen > *:not(.tsum-sparkles) { position: relative; z-index: 1; }
+  .result-score {
+    font-size: 58px; font-weight: 900; color: var(--accent);
+    text-shadow: 0 2px 0 rgba(255,255,255,0.9), 0 8px 20px rgba(240,100,142,0.35); margin: 8px 0;
+  }
+  .result-detail { font-size: 14px; color: var(--ink-soft); margin-bottom: 4px; }
+  .result-points {
+    font-size: 18px; font-weight: 900; color: #1d7a35;
+    background: linear-gradient(180deg, rgba(190,240,200,0.85), rgba(150,225,170,0.75));
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1.5px solid rgba(255,255,255,0.85);
+    padding: 8px 24px; border-radius: 20px; margin: 16px 0 32px;
+    box-shadow: 0 4px 14px rgba(120,190,140,0.35), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
   @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
   .shake { animation: shake 0.3s ease-in-out; }
   #debug-colliders-btn {
-    position: fixed; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom));
+    position: fixed; right: calc(var(--game-left, 0px) + max(8px, env(safe-area-inset-right))); bottom: calc(var(--game-top, 0px) + max(8px, env(safe-area-inset-bottom)));
     z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
-    padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(139,94,60,0.35);
-    background: rgba(255,255,255,0.92); color: #8B5E3C; cursor: pointer;
-    box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--glass-line);
+    background: linear-gradient(150deg, rgba(255,255,255,0.8), rgba(255,255,255,0.55)); backdrop-filter: blur(12px) saturate(1.4); -webkit-backdrop-filter: blur(12px) saturate(1.4); color: var(--ink-soft); cursor: pointer;
+    box-shadow: 0 3px 12px rgba(205,150,105,0.22);
   }
   #debug-colliders-btn.on {
     background: rgba(200, 235, 255, 0.96); border-color: rgba(40, 120, 160, 0.45); color: #1a6080;
   }
   #debug-log-btn {
-    position: fixed; right: max(8px, env(safe-area-inset-right));
-    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 126px);
+    position: fixed; right: calc(var(--game-left, 0px) + max(8px, env(safe-area-inset-right)));
+    bottom: calc(var(--game-top, 0px) + max(8px, env(safe-area-inset-bottom)) + 126px);
     z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
-    padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(139,94,60,0.35);
-    background: rgba(255,255,255,0.92); color: #8B5E3C; cursor: pointer;
-    box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--glass-line);
+    background: linear-gradient(150deg, rgba(255,255,255,0.8), rgba(255,255,255,0.55)); backdrop-filter: blur(12px) saturate(1.4); -webkit-backdrop-filter: blur(12px) saturate(1.4); color: var(--ink-soft); cursor: pointer;
+    box-shadow: 0 3px 12px rgba(205,150,105,0.22);
   }
   #debug-hamster-btn {
-    position: fixed; right: max(8px, env(safe-area-inset-right));
-    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 84px);
+    position: fixed; right: calc(var(--game-left, 0px) + max(8px, env(safe-area-inset-right)));
+    bottom: calc(var(--game-top, 0px) + max(8px, env(safe-area-inset-bottom)) + 84px);
     z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
-    padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(139,94,60,0.35);
-    background: rgba(255,255,255,0.92); color: #8B5E3C; cursor: pointer;
-    box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--glass-line);
+    background: linear-gradient(150deg, rgba(255,255,255,0.8), rgba(255,255,255,0.55)); backdrop-filter: blur(12px) saturate(1.4); -webkit-backdrop-filter: blur(12px) saturate(1.4); color: var(--ink-soft); cursor: pointer;
+    box-shadow: 0 3px 12px rgba(205,150,105,0.22);
   }
   #debug-hamster-btn.on {
     background: rgba(230, 245, 220, 0.96); border-color: rgba(100, 150, 80, 0.45); color: #3d5c2e;
   }
   #debug-sweet-center-btn {
-    position: fixed; right: max(8px, env(safe-area-inset-right));
-    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 42px);
+    position: fixed; right: calc(var(--game-left, 0px) + max(8px, env(safe-area-inset-right)));
+    bottom: calc(var(--game-top, 0px) + max(8px, env(safe-area-inset-bottom)) + 42px);
     z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
-    padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(139,94,60,0.35);
-    background: rgba(255,255,255,0.92); color: #8B5E3C; cursor: pointer;
-    box-shadow: 0 2px 10px rgba(100,80,60,0.12);
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--glass-line);
+    background: linear-gradient(150deg, rgba(255,255,255,0.8), rgba(255,255,255,0.55)); backdrop-filter: blur(12px) saturate(1.4); -webkit-backdrop-filter: blur(12px) saturate(1.4); color: var(--ink-soft); cursor: pointer;
+    box-shadow: 0 3px 12px rgba(205,150,105,0.22);
   }
   #debug-sweet-center-btn.on {
     background: rgba(255, 235, 210, 0.96); border-color: rgba(200, 120, 60, 0.5); color: #8B4513;
@@ -163,41 +291,46 @@
   .debug-log-modal {
     position: fixed; inset: 0; z-index: 50; display: none;
     align-items: center; justify-content: center; padding: 16px;
-    background: rgba(40, 30, 25, 0.5); backdrop-filter: blur(4px);
+    background: rgba(250, 243, 235, 0.5); backdrop-filter: blur(10px) saturate(1.2);
+    -webkit-backdrop-filter: blur(10px) saturate(1.2);
     pointer-events: auto;
   }
   .debug-log-modal.is-open { display: flex; }
   .debug-log-dialog {
     width: 100%; max-width: min(400px, calc(100vw - 24px)); max-height: 88vh;
     display: flex; flex-direction: column;
-    background: linear-gradient(180deg, #FFFDF8 0%, #FFF5E8 100%);
+    background: var(--glass-bg-strong);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 20px; padding: 18px 16px 16px;
-    border: 1px solid rgba(212,165,116,0.4);
-    box-shadow: 0 12px 40px rgba(100,60,40,0.25);
+    border: 1.5px solid var(--glass-line);
+    box-shadow: 0 20px 50px rgba(205,150,105,0.35);
   }
   .debug-log-dialog h2 {
-    font-size: 18px; font-weight: 900; color: #8B5E3C; margin-bottom: 10px; text-align: center;
+    font-size: 18px; font-weight: 900; color: var(--ink); margin-bottom: 10px; text-align: center;
   }
   #debug-log-pre {
     flex: 1; min-height: 100px; max-height: min(58vh, 420px); overflow: auto;
     margin: 0; padding: 12px;
     font-size: 11px; line-height: 1.5; font-family: ui-monospace, Menlo, monospace;
     white-space: pre-wrap; word-break: break-word;
-    background: rgba(245,240,230,0.95); border-radius: 12px; color: #3d3028;
-    border: 1px solid rgba(139,94,60,0.12);
+    background: rgba(255,255,255,0.55); border-radius: 12px; color: var(--ink);
+    border: 1px solid var(--glass-line);
   }
   .debug-log-close {
-    margin-top: 12px; width: 100%; padding: 12px 16px; border-radius: 14px; border: none;
-    background: linear-gradient(135deg, #FF9A6C, #FF7043); color: #fff;
+    margin-top: 12px; width: 100%; padding: 12px 16px; border-radius: 14px;
+    border: none;
+    background: linear-gradient(180deg, var(--tsum-pink-light) 0%, var(--tsum-pink) 45%, var(--tsum-pink-dark) 100%);
+    color: #fff; text-shadow: 0 2px 0 rgba(178,58,143,0.55);
     font-size: 15px; font-weight: 900; font-family: inherit; cursor: pointer;
-    box-shadow: 0 3px 0 #D4603A;
+    box-shadow: 0 4px 0 var(--tsum-pink-shadow), inset 0 2px 0 rgba(255,255,255,0.45);
   }
-  .debug-log-close:active { transform: translateY(2px); box-shadow: 0 1px 0 #D4603A; }
+  .debug-log-close:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--tsum-pink-shadow); }
 
   .wobble-meter-wrap {
     position: fixed;
-    left: max(10px, env(safe-area-inset-left));
-    bottom: max(10px, env(safe-area-inset-bottom));
+    left: calc(var(--game-left, 0px) + max(10px, env(safe-area-inset-left)));
+    bottom: calc(var(--game-top, 0px) + max(10px, env(safe-area-inset-bottom)));
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -205,10 +338,12 @@
     pointer-events: none;
     z-index: 25;
     padding: 8px 8px 7px;
-    background: rgba(255,253,248,0.92);
-    border-radius: 12px;
-    border: 1px solid rgba(139,94,60,0.22);
-    box-shadow: 0 4px 14px rgba(100,80,60,0.12);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 14px;
+    border: 1.5px solid var(--glass-line);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.9);
   }
   .wobble-meter-wrap[hidden] {
     display: none !important;
@@ -220,16 +355,16 @@
     gap: 4px;
   }
   .wobble-meter-title {
-    font-size: 11px; font-weight: 900; color: #8B5E3C; letter-spacing: 0.04em;
+    font-size: 11px; font-weight: 900; color: var(--accent); letter-spacing: 0.04em;
     white-space: nowrap;
   }
   .wobble-meter-track {
     width: 12px;
     height: 120px;
     border-radius: 999px;
-    background: rgba(139,94,60,0.12);
+    background: rgba(205,150,105,0.22);
     overflow: hidden;
-    border: 1px solid rgba(139,94,60,0.18);
+    border: 1px solid var(--glass-line);
     display: flex;
     align-items: flex-end;
   }
@@ -240,14 +375,6 @@
     transform: scaleY(0);
     border-radius: 999px;
     will-change: transform;
-  }
-  .wobble-meter-danger {
-    font-size: 11px;
-    font-weight: 900;
-    color: #c62828;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-    transition: opacity 0.15s ease, color 0.15s ease;
   }
 
 </style>
@@ -282,8 +409,7 @@
   </div>
   <div id="wobble-meter-wrap" class="wobble-meter-wrap" hidden aria-hidden="true">
     <div class="wobble-meter-row-top">
-      <span class="wobble-meter-title">ずれ</span>
-      <span id="wobble-meter-danger" class="wobble-meter-danger">きけん</span>
+      <span class="wobble-meter-title">ずれ度</span>
     </div>
     <div class="wobble-meter-track">
       <div id="wobble-meter-fill" class="wobble-meter-fill"></div>
@@ -291,18 +417,29 @@
   </div>
 </div>
 <div id="start-screen">
-  <div class="deco-emoji"><img src="item_01.png" width="48" height="48" style="vertical-align:middle"><img src="item_02.png" width="48" height="48" style="vertical-align:middle"><img src="item_03.png" width="48" height="48" style="vertical-align:middle"></div>
-  <div class="title">スイーツムツム</div>
-  <div class="subtitle">タップでおやつを積み上げよう！</div>
+  <div class="tsum-sparkles" aria-hidden="true">
+    <span class="tsum-sparkle" style="left:10%; top:12%; width:26px; height:26px; --spark:#ffe9a8; animation-duration:2.8s; animation-delay:0s;"></span>
+    <span class="tsum-sparkle" style="left:84%; top:8%;  width:18px; height:18px; --spark:#ffd0e2; animation-duration:3.4s; animation-delay:0.9s;"></span>
+    <span class="tsum-sparkle" style="left:70%; top:22%; width:32px; height:32px; --spark:#fff6d8; animation-duration:2.4s; animation-delay:1.6s;"></span>
+    <span class="tsum-sparkle" style="left:22%; top:30%; width:14px; height:14px; --spark:#cdeaff; animation-duration:3.1s; animation-delay:0.4s;"></span>
+    <span class="tsum-sparkle" style="left:5%;  top:48%; width:22px; height:22px; --spark:#ffd0e2; animation-duration:2.6s; animation-delay:2.1s;"></span>
+    <span class="tsum-sparkle" style="left:92%; top:40%; width:24px; height:24px; --spark:#ffe9a8; animation-duration:3.6s; animation-delay:1.2s;"></span>
+    <span class="tsum-sparkle" style="left:16%; top:66%; width:18px; height:18px; --spark:#fff6d8; animation-duration:2.9s; animation-delay:1.8s;"></span>
+    <span class="tsum-sparkle" style="left:86%; top:64%; width:28px; height:28px; --spark:#cdeaff; animation-duration:3.2s; animation-delay:0.2s;"></span>
+    <span class="tsum-sparkle" style="left:36%; top:82%; width:16px; height:16px; --spark:#ffd0e2; animation-duration:2.5s; animation-delay:2.6s;"></span>
+    <span class="tsum-sparkle" style="left:66%; top:88%; width:22px; height:22px; --spark:#ffe9a8; animation-duration:3.5s; animation-delay:0.7s;"></span>
+  </div>
+  <img id="title-logo" src="logo.png" alt="スイーツムツム">
+  <div class="subtitle">✨ タップでおやつを積み上げよう！ ✨</div>
   <div class="how-to">🍽 スワイプ or ← → キーでお皿を動かして<br>🍩 おやつをキャッチしよう！<br>👆 タップ or スペース / S / 下キー で落下スピードUP</div>
   <button class="btn" id="start-btn">はじめる</button>
 </div>
 <div id="result-screen">
   <div class="deco-emoji">🏆</div>
   <div class="title" style="font-size:28px;">けっか</div>
-  <div id="result-breakdown" style="font-size:14px; color:#A0785C; line-height:2; margin:8px 0;"></div>
-  <div style="width:60%; height:1px; background:#DDD0C0; margin:8px auto;"></div>
-  <div style="font-size:12px; color:#C48B5C; font-weight:700;">合計スコア</div>
+  <div id="result-breakdown" style="font-size:14px; color:var(--ink-soft); line-height:2; margin:8px 0;"></div>
+  <div style="width:60%; height:1px; background:rgba(205,150,105,0.3); margin:8px auto;"></div>
+  <div style="font-size:12px; color:var(--tsum-cyan); font-weight:700;">合計スコア</div>
   <div class="result-score" id="result-score">0</div>
   <div class="result-detail" id="result-detail"></div>
   <div class="result-points" id="result-points">+0 pt</div>
@@ -323,6 +460,8 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
 let W, H, PLATE_Y, PLATE_W, PLATE_H, PLATE_DRAW_OFFSET_Y, UNIT;
+// UNIT 依存の揺れ定数。リサイズで UNIT が変わっても追従するよう resize() 内で再計算する
+let SWAY_ANGLE_PER_PX, SWAY_MAX_X, SWAY_MAX_V;
 
 /** お皿の見た目だけ下げる（論理位置 PLATE_Y・着地・カメラは不変）。実効オフセット ≈ この値 × (画面幅/420) px */
 const PLATE_DRAW_DOWN_UNIT = 0;
@@ -416,20 +555,35 @@ function closeDebugLogModal() {
 
 function resize() {
   const dpr = window.devicePixelRatio || 1;
-  // スマホ（タッチ主体の端末）は画面いっぱい、PC は従来どおり最大420px
+  // スマホ（タッチ主体の端末）は画面いっぱい、PC はスマホ風の縦長固定フレーム（最大 420×910）
   const isTouchDevice = (typeof window.matchMedia === 'function')
     && window.matchMedia('(pointer: coarse)').matches;
   W = isTouchDevice ? window.innerWidth : Math.min(window.innerWidth, 420);
   // スマホはツールバー分を除いた実際に見える高さを使う（地面が画面外に出るのを防ぐ）
-  H = (window.visualViewport && window.visualViewport.height)
+  const vh = (window.visualViewport && window.visualViewport.height)
     ? Math.round(window.visualViewport.height)
     : window.innerHeight;
+  H = isTouchDevice ? vh : Math.min(vh, 910);
+  // PC では余白の中央にゲームフレームを配置し、HUD 等の UI も CSS 変数で追従させる
+  const gameLeft = Math.max(0, Math.round((window.innerWidth - W) / 2));
+  const gameTop = Math.max(0, Math.round((vh - H) / 2));
+  canvas.style.marginTop = gameTop + 'px';
+  document.documentElement.style.setProperty('--game-left', gameLeft + 'px');
+  document.documentElement.style.setProperty('--game-top', gameTop + 'px');
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width = W + 'px';
   canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  UNIT = W / 420;
+  // 幅基準に加えて高さでもクランプ。横向きスマホやタブレット横置きで
+  // お菓子が巨大化して積む高さが確保できなくなるのを防ぐ。
+  // 縦持ち（H > W）ではツールバーで高さが縮んでも H/700 > W/420 が保たれ、
+  // 従来どおり幅基準のサイズになる（インゲームのスイーツが小さくならない）。
+  UNIT = Math.min(W / 420, H / 700);
+  // UNIT 依存の揺れ定数を追従させる（リサイズ・回転対応）
+  SWAY_ANGLE_PER_PX = 0.011 / UNIT;
+  SWAY_MAX_X = 64 * UNIT;
+  SWAY_MAX_V = 900 * UNIT;
   PLATE_W = 100 * UNIT;
   PLATE_H = 18 * UNIT;
   PLATE_Y = H;
@@ -456,6 +610,9 @@ const IMG_ICECREAM = loadImage('item_04.png');
 const IMG_ENEMY    = loadImage('enemy_01.png');
 const IMG_ENEMY2   = loadImage('enemy_02.png');
 const IMG_STAR     = loadImage('star.png');
+const IMG_BATTLE_BG = loadImage('battle_bg.png');
+const IMG_CLOUD1 = loadImage('cloude01.png');
+const IMG_CLOUD2 = loadImage('cloude02.png');
 
 const SFX_LAND_SWEET = new Audio('pyon1.mp3');
 SFX_LAND_SWEET.preload = 'auto';
@@ -740,11 +897,12 @@ const SWAY_C = 5.0;
 /** お皿の加速度（ジャーク）を各段へ注入するゲイン。動き出し/停止/反転で塔が遅れて行き過ぎる。
  *  等速ドラッグでは塔は傾かない（＝実際の積み木に近い） */
 const SWAY_PLATE_DRIVE = 22;
-let swayPrevPlateDelta = 0;
+let swayPrevPlateVel = 0;
+// 揺れ積分の固定タイムステップ（1/120s）。フレームレートに依らず同じ挙動にする。
+const SWAY_FIXED_H = 1 / 120;
+let swayAccum = 0;
 /** 横ズレ差（せん断px）あたりの傾き角。UNIT で割って解像度非依存に */
-const SWAY_ANGLE_PER_PX = 0.011 / UNIT;
-const SWAY_MAX_X = 64 * UNIT;
-const SWAY_MAX_V = 900 * UNIT;
+// SWAY_ANGLE_PER_PX / SWAY_MAX_X / SWAY_MAX_V は UNIT 依存のため resize() 内で再計算
 const SWAY_SUBSTEPS = 2;
 
 // Camera
@@ -762,7 +920,28 @@ for (let i = 0; i < 15; i++) {
   });
 }
 
-function handleViewportResize() { resize(); if (state === 'start') plateX = W / 2; }
+function handleViewportResize() {
+  const prevW = W, prevUnit = UNIT;
+  resize();
+  if (state === 'start') { plateX = W / 2; return; }
+  if (!prevW || !prevUnit) return;
+  const kW = W / prevW;
+  const kU = UNIT / prevUnit;
+  // お皿を新しい画面幅に合わせて比例移動し、画面内へクランプ
+  plateX = Math.max(PLATE_W * 0.5, Math.min(W - PLATE_W * 0.5, plateX * kW));
+  if (state === 'collapsed') return; // Matter ボディは絶対座標のため崩壊中は再配置しない
+  // タワーの横ずれ・揺れは px 値なので新 UNIT にスケールし、足元 Y を新 PLATE_Y から再構築
+  for (const s of stack) {
+    s.relX *= kU;
+    if (s.swayX) s.swayX *= kU;
+    if (s.swayV) s.swayV *= kU;
+  }
+  rebuildStackFootYs();
+  // 落下中アイテムも画面内に収まるよう比例移動
+  if (falling && !falling.landed) {
+    falling.x = Math.max(0, Math.min(W, falling.x * kW));
+  }
+}
 window.addEventListener('resize', handleViewportResize);
 window.addEventListener('orientationchange', handleViewportResize);
 // スマホのツールバー開閉で見える高さが変わったときも追従
@@ -931,15 +1110,22 @@ function ensureSwayState() {
  */
 function updateStackSway(dt, plateDelta) {
   const n = stack.length;
-  if (n === 0) { swayPrevPlateDelta = plateDelta; return; }
+  const plateVel = dt > 0 ? plateDelta / dt : 0;
+  if (n === 0) { swayPrevPlateVel = plateVel; swayAccum = 0; return; }
   ensureSwayState();
-  // 皿の加速度（ジャーク）を全段へ慣性インパルスとして注入（等速では傾かない）
-  const jerk = plateDelta - swayPrevPlateDelta;
-  swayPrevPlateDelta = plateDelta;
-  for (const s of stack) s.swayV -= jerk * SWAY_PLATE_DRIVE;
+  // 皿の加速度（速度変化）を全段へ慣性インパルスとして注入（等速では傾かない）。
+  // フレームあたり差分ではなく速度差分ベースにして、フレームレート非依存にする。
+  // SWAY_PLATE_DRIVE / 60 は従来の 60fps 時の注入量と一致させるための換算。
+  const jerkV = plateVel - swayPrevPlateVel;
+  swayPrevPlateVel = plateVel;
+  for (const s of stack) s.swayV -= jerkV * (SWAY_PLATE_DRIVE / 60);
 
-  const h = dt / SWAY_SUBSTEPS;
-  for (let step = 0; step < SWAY_SUBSTEPS; step++) {
+  // 固定タイムステップ積分。60fps なら従来の dt/2 × 2 サブステップと同一。
+  const h = SWAY_FIXED_H;
+  swayAccum = Math.min(swayAccum + dt, h * 8);
+  let steps = 0;
+  while (swayAccum >= h - 1e-9) { swayAccum -= h; steps++; }
+  for (let step = 0; step < steps; step++) {
     // 加速度を一括計算（Jacobi）してから積分
     for (let i = 0; i < n; i++) {
       const s = stack[i];
@@ -1320,6 +1506,7 @@ function getCollapseDrawFootWorldY(body, type) {
 
 function setupMatterCollapse(stackSnapshot, toppleDir, swayStrength, reason, extraFaller) {
   destroyMatterWorld();
+  collapseAccum = 0;
   if (typeof Matter === 'undefined') {
     console.warn('[oyatsu] Matter.js が読み込めません。崩壊演出をスキップします。');
     return;
@@ -1526,13 +1713,18 @@ function clampCollapseBodyAfterStep(entry, stepDt) {
   }
 }
 
+// 崩壊物理の固定タイムステップ（1/120s）。60fps 時は従来の frameDt/2 × 2 サブステップと
+// 同一で、120Hz や 30fps でも崩壊挙動が変わらない（フレームレート非依存）。
+const COLLAPSE_FIXED_DT = 1 / 120;
+let collapseAccum = 0;
 function stepMatterCollapse(dt) {
   if (!matterEngine) return;
-  const frameDt = Math.min(dt, 0.05);
-  const sub = COLLAPSE_PHYSICS_SUBSTEPS;
-  const stepDt = frameDt / sub;
+  const stepDt = COLLAPSE_FIXED_DT;
   const stepMs = stepDt * 1000;
-  for (let i = 0; i < sub; i++) {
+  // スパイク時の暴走防止に最大 8 ステップ分でクランプ（超過分は捨てる）
+  collapseAccum = Math.min(collapseAccum + Math.min(dt, 0.05), stepDt * 8);
+  while (collapseAccum >= stepDt - 1e-9) {
+    collapseAccum -= stepDt;
     // お皿をプレイヤーの操作位置（plateX）へ追従させ、アイテムを押せるようにする。
     // 移動量から速度を与えることで、押し出し＋反発が自然になる。
     if (matterPlateBody) {
@@ -1587,6 +1779,10 @@ function oyatsuCollapseDebug() {
 }
 if (typeof window !== 'undefined') window.oyatsuCollapseDebug = oyatsuCollapseDebug;
 
+// 崩壊演出: ヒットストップ（全停止）と白フラッシュ
+let collapseHitStop = 0;
+let collapseFlash = 0;
+
 function triggerCollapse(reasonDetail, extraFaller) {
   const d = reasonDetail && typeof reasonDetail === 'object'
     ? reasonDetail
@@ -1607,6 +1803,9 @@ function triggerCollapse(reasonDetail, extraFaller) {
   collapseTimer = COLLAPSE_DURATION;
   falling = null;
   mogumoguFx = null;
+  // 衝撃演出: 一瞬止めてフラッシュ
+  collapseHitStop = 0.22;
+  collapseFlash = 1;
   // 崩壊の落下音を個数に応じた秒数だけ再生
   playRakkaSfx(stackSnapshot.length);
 
@@ -1650,7 +1849,7 @@ function startGame() {
   playCollapseLog = [];
   if (typeof window !== 'undefined') window.oyatsuPlayCollapseLog = playCollapseLog;
   plateX = W / 2; prevPlateX = W / 2;
-  stackSway = 0; swayVel = 0; swayPrevPlateDelta = 0;
+  stackSway = 0; swayVel = 0; swayPrevPlateVel = 0; swayAccum = 0;
   const cam0 = computeTargetCameraY();
   cameraY = cam0;
   targetCameraY = cam0;
@@ -1687,9 +1886,9 @@ function showResult() {
   const points = Math.floor(totalScore / 10);
 
   document.getElementById('result-breakdown').innerHTML =
-    `<img src="item_01.png" width="18" height="18" style="vertical-align:middle"> キャッチ: <b style="color:#8B5E3C">${catchScore}</b><br>` +
-    `📦 つんだ数 (×5): <b style="color:#8B5E3C">${countBonus}</b><br>` +
-    `📏 たかさボーナス: <b style="color:#8B5E3C">${heightBonus}</b>`;
+    `<img src="item_01.png" width="18" height="18" style="vertical-align:middle"> キャッチ: <b style="color:var(--accent)">${catchScore}</b><br>` +
+    `📦 つんだ数 (×5): <b style="color:var(--accent)">${countBonus}</b><br>` +
+    `📏 たかさボーナス: <b style="color:var(--accent)">${heightBonus}</b>`;
   document.getElementById('result-score').textContent = totalScore;
   document.getElementById('result-detail').textContent =
     `最大${maxStackCount}個積んだ！ (P:${totalPerfect} G:${totalGood} OK:${totalOK})`;
@@ -2003,6 +2202,13 @@ function drawPartyDancers() {
 function update(dt) {
   lastFrameDt = dt;
   gameElapsed += dt;
+  // 崩壊ヒットストップ: 一瞬すべて停止して衝撃を演出（フラッシュだけ減衰させる）
+  if (collapseHitStop > 0) {
+    collapseHitStop -= dt;
+    collapseFlash = Math.max(0, collapseFlash - dt * 6);
+    return;
+  }
+  collapseFlash = Math.max(0, collapseFlash - dt * 6);
   // フレームレート非依存スケール（60fps基準）。1フレーム移動量に掛けて端末ごとの速度差を無くす
   const fs = dt * 60;
 
@@ -2675,16 +2881,15 @@ function drawCollidersDebug() {
 }
 
 const _wm = {
-  wrap: null, fill: null, dangerEl: null,
+  wrap: null, fill: null,
   prevHidden: null, prevTQ: -1, prevTier: -1,
 };
 function updateWobbleMeter() {
   if (!_wm.wrap) {
     _wm.wrap = document.getElementById('wobble-meter-wrap');
     _wm.fill = document.getElementById('wobble-meter-fill');
-    _wm.dangerEl = document.getElementById('wobble-meter-danger');
   }
-  const { wrap, fill, dangerEl } = _wm;
+  const { wrap, fill } = _wm;
   if (!wrap || !fill) return;
 
   const shouldHide = state !== 'falling' || paused;
@@ -2712,29 +2917,234 @@ function updateWobbleMeter() {
     'linear-gradient(0deg, #e53935, #ff8a80)',
   ];
   fill.style.background = bgMap[tier];
+}
 
-  if (dangerEl) {
-    const opMap = ['0.45', '0.85', '1', '1'];
-    const colMap = ['#8d6e63', '#d84315', '#c62828', '#b71c1c'];
-    dangerEl.style.opacity = opMap[tier];
-    dangerEl.style.color = colMap[tier];
+// --- Sky altitude system（高さの視覚化: 昼空→夜空→宇宙） ---
+// altitude = 地上（PLATE_Y）からの世界座標の高さ(px)
+const SKY_STOPS = [
+  { alt: 0,    c: [0x9a, 0xd9, 0xfb] }, // 地上: 昼の水色
+  { alt: 900,  c: [0x6f, 0xb2, 0xe8] }, // 高空
+  { alt: 1600, c: [0x2f, 0x4d, 0xa0] }, // 夕暮れ〜宵
+  { alt: 2300, c: [0x16, 0x26, 0x6b] }, // 夜空の濃紺
+  { alt: 3200, c: [0x08, 0x0c, 0x2a] }, // 深夜
+  { alt: 4200, c: [0x02, 0x03, 0x0c] }, // 宇宙
+];
+function skyColorAt(alt) {
+  if (alt <= SKY_STOPS[0].alt) return SKY_STOPS[0].c;
+  const last = SKY_STOPS[SKY_STOPS.length - 1];
+  if (alt >= last.alt) return last.c;
+  for (let i = 1; i < SKY_STOPS.length; i++) {
+    if (alt <= SKY_STOPS[i].alt) {
+      const a = SKY_STOPS[i - 1], b = SKY_STOPS[i];
+      const t = (alt - a.alt) / (b.alt - a.alt);
+      return [0, 1, 2].map(k => Math.round(a.c[k] + (b.c[k] - a.c[k]) * t));
+    }
+  }
+  return last.c;
+}
+function skyColorCssAt(alt) {
+  const c = skyColorAt(alt);
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+/** 星の見え具合 0..1（夜空に入ると増える） */
+function starAmountAt(alt) {
+  return Math.max(0, Math.min(1, (alt - 1200) / 800));
+}
+
+// 星フィールド（世界座標に固定。シード付き乱数で毎回同じ配置）
+let skyStars = null;
+function ensureSkyStars() {
+  if (skyStars) return;
+  let seed = 20260704;
+  const rnd = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  skyStars = [];
+  for (let i = 0; i < 150; i++) {
+    skyStars.push({
+      alt: 1200 + rnd() * 4800,          // 夜空の始まり〜宇宙の奥まで
+      xFrac: rnd(),
+      size: 0.6 + rnd() * 1.4,
+      phase: rnd() * Math.PI * 2,
+      speed: 1.2 + rnd() * 2.4,          // 瞬きの速さ(rad/s)
+    });
+  }
+}
+// ふわふわ漂う雲。背景画像が途切れたところ（実効高度0）から宵までまばらに配置。
+// 中央はアイテムを積むスペースなので、画面の左右サイドでゆらゆら往復する。
+let skyClouds = null;
+function ensureSkyClouds() {
+  if (skyClouds) return;
+  let seed = 19870411;
+  const rnd = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  skyClouds = [];
+  for (let i = 0; i < 8; i++) {
+    const leftSide = i % 2 === 0; // 左右交互に配置
+    skyClouds.push({
+      altEff: 120 + i * 230 + rnd() * 120,   // 画像の切れ目直後から宵までまばらに
+      // 画面端寄り（見切れ可）。0 が画面端の外、0.24 が端寄り内側
+      sideFrac: (rnd() * 0.24 - 0.08) * (leftSide ? 1 : -1),
+      leftSide,
+      swayAmp: (14 + rnd() * 22),            // 左右ゆらゆらの振れ幅(UNIT倍)
+      swaySpeed: 0.12 + rnd() * 0.14,        // 往復の速さ(rad/s) ゆったり
+      swayPhase: rnd() * Math.PI * 2,
+      scale: 0.45 + rnd() * 0.7,
+      bobPhase: rnd() * Math.PI * 2,         // 上下のふわふわ
+      img: rnd() < 0.5 ? 1 : 2,
+    });
+  }
+}
+/** 雲の見え具合 0..1（画像の切れ目でフェードイン、宵の終わりでフェードアウト） */
+function cloudAmountAt(altEff) {
+  const fadeIn = Math.max(0, Math.min(1, altEff / 180));
+  const fadeOut = Math.max(0, Math.min(1, (2100 - altEff) / 300));
+  return Math.min(fadeIn, fadeOut);
+}
+
+// 遠くの惑星（宇宙域の世界座標に固定）
+const SKY_PLANETS = [
+  { alt: 3700, xFrac: 0.2,  r: 30, base: '#c98ba8', dark: '#7d4f66', ring: false },
+  { alt: 4400, xFrac: 0.76, r: 44, base: '#e8c07a', dark: '#a37b45', ring: true },
+  { alt: 5100, xFrac: 0.46, r: 17, base: '#a8c3d6', dark: '#5f7889', ring: false },
+];
+
+// 空グラデーションの開始高度オフセット。背景画像の上端までは #9ad9fb のままにして、
+// 画像が切れた先からグラデーションが始まるようにする（drawSky で毎フレーム更新）
+let skyAltOffset = 0;
+
+function drawSky() {
+  // 背景画像の上端の高度を求める（画像下端アンカー = H + camBase、上端 = その dh 上）
+  if (IMG_BATTLE_BG.complete && IMG_BATTLE_BG.naturalWidth > 0) {
+    const scale = Math.max(W / IMG_BATTLE_BG.naturalWidth, H / IMG_BATTLE_BG.naturalHeight);
+    const dh = IMG_BATTLE_BG.naturalHeight * scale;
+    const camBase = PLATE_Y - H * 0.82;
+    skyAltOffset = Math.max(0, dh - camBase);
+  }
+  // 画面を世界座標の高度に応じた縦グラデーションで塗る
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  const SAMPLES = 6;
+  for (let i = 0; i <= SAMPLES; i++) {
+    const sy = (H * i) / SAMPLES;
+    const alt = PLATE_Y - cameraY - sy - skyAltOffset;
+    g.addColorStop(i / SAMPLES, skyColorCssAt(alt));
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  const now = performance.now() / 1000;
+
+  // ふわふわ漂う雲（画像の切れ目〜宵の帯。左右サイドでゆらゆら往復、中央は空ける）
+  ensureSkyClouds();
+  for (const cl of skyClouds) {
+    const img = cl.img === 1 ? IMG_CLOUD1 : IMG_CLOUD2;
+    if (!img.complete || img.naturalWidth === 0) continue;
+    const amount = cloudAmountAt(cl.altEff);
+    if (amount <= 0.02) continue;
+    const cw = img.naturalWidth * cl.scale * UNIT;
+    const ch = img.naturalHeight * cl.scale * UNIT;
+    // 左右サイドの基準位置（見切れ可）＋サイン波でゆったり往復
+    const baseX = cl.leftSide ? cl.sideFrac * W : W + cl.sideFrac * W;
+    const sway = Math.sin(now * cl.swaySpeed + cl.swayPhase) * cl.swayAmp * UNIT;
+    const x = baseX + sway - cw * 0.5;
+    const bob = Math.sin(now * 0.35 + cl.bobPhase) * 7 * UNIT;
+    const sy = PLATE_Y - (cl.altEff + skyAltOffset) - cameraY + bob;
+    if (sy < -ch || sy > H + ch) continue;
+    ctx.globalAlpha = 0.85 * amount;
+    ctx.drawImage(img, x, sy - ch * 0.5, cw, ch);
+  }
+  ctx.globalAlpha = 1;
+
+  // 瞬く星（夜空域以上でフェードイン）
+  ensureSkyStars();
+  ctx.fillStyle = '#fff';
+  for (const st of skyStars) {
+    const sy = PLATE_Y - st.alt - cameraY;
+    if (sy < -6 || sy > H + 6) continue;
+    const amount = starAmountAt(st.alt - skyAltOffset);
+    if (amount <= 0.02) continue;
+    const twinkle = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(now * st.speed + st.phase));
+    ctx.globalAlpha = amount * twinkle;
+    const r = st.size * UNIT;
+    const x = st.xFrac * W;
+    ctx.beginPath();
+    ctx.arc(x, sy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // 遠くの惑星（宇宙域）
+  for (const p of SKY_PLANETS) {
+    const sy = PLATE_Y - p.alt - cameraY;
+    const r = p.r * UNIT;
+    if (sy < -r * 2.4 || sy > H + r * 2.4) continue;
+    const x = p.xFrac * W;
+    // 本体: 左上から光が当たる球
+    const grad = ctx.createRadialGradient(x - r * 0.4, sy - r * 0.4, r * 0.15, x, sy, r);
+    grad.addColorStop(0, p.base);
+    grad.addColorStop(1, p.dark);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, sy, r, 0, Math.PI * 2);
+    ctx.fill();
+    if (p.ring) {
+      ctx.save();
+      ctx.translate(x, sy);
+      ctx.rotate(-0.35);
+      ctx.strokeStyle = 'rgba(232,192,122,0.65)';
+      ctx.lineWidth = r * 0.16;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.65, r * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 }
 
 // --- Draw ---
-let _cachedBgGrad = null, _cachedBgGradH = 0;
 function draw() {
-  // Fill solid background (prevents transparency issues)
+  // ベースは高度連動の空（昼空→夜空→宇宙）。背景画像が切れても空が続いて見える
   ctx.globalAlpha = 1;
-  if (!_cachedBgGrad || _cachedBgGradH !== H) {
-    _cachedBgGrad = ctx.createLinearGradient(0, 0, 0, H);
-    _cachedBgGrad.addColorStop(0, '#FFFDF8');
-    _cachedBgGrad.addColorStop(0.42, '#FFF5E8');
-    _cachedBgGrad.addColorStop(1, '#FFEAD8');
-    _cachedBgGradH = H;
+  drawSky();
+  if (IMG_BATTLE_BG.complete && IMG_BATTLE_BG.naturalWidth > 0) {
+    // 背景画像は世界座標にアンカーし、カメラに追従して動く。
+    // アンカーは「ゲーム開始時のスクリーン下端」の世界座標（開始時カメラ基準 = PLATE_Y - H*0.82、
+    // computeTargetCameraY の camPlate と同じ式）。開始時は画像の底辺が画面の底辺に一致する。
+    const iw = IMG_BATTLE_BG.naturalWidth, ih = IMG_BATTLE_BG.naturalHeight;
+    const scale = Math.max(W / iw, H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const camBase = PLATE_Y - H * 0.82;
+    const groundScreenY = (H + camBase) - cameraY;
+    const topY = groundScreenY - dh;
+    if (groundScreenY > 0 && topY < H) {
+      ctx.drawImage(IMG_BATTLE_BG, (W - dw) / 2, topY, dw, dh);
+      // 画像上端とその高度の空色をグラデーションでなじませる
+      const blendH = 160;
+      const topAlt = PLATE_Y - cameraY - topY - skyAltOffset;
+      const c = skyColorAt(topAlt);
+      const g = ctx.createLinearGradient(0, topY, 0, topY + blendH);
+      g.addColorStop(0, `rgb(${c[0]},${c[1]},${c[2]})`);
+      g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, topY, W, blendH);
+      // ゲームプレイの視認性のため、画像領域にだけ薄い白ベールを重ねる。
+      // 段差が出ないよう上端からフェードインさせる（夜空・宇宙域は暗いままキープ）
+      if (topY < H) {
+        const vg = ctx.createLinearGradient(0, topY, 0, topY + blendH);
+        vg.addColorStop(0, 'rgba(255,255,255,0)');
+        vg.addColorStop(1, 'rgba(255,255,255,0.18)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, Math.max(0, topY), W, Math.min(H, topY + blendH) - Math.max(0, topY));
+        if (topY + blendH < H) {
+          ctx.fillStyle = 'rgba(255,255,255,0.18)';
+          ctx.fillRect(0, topY + blendH, W, H - (topY + blendH));
+        }
+      }
+    }
   }
-  ctx.fillStyle = _cachedBgGrad;
-  ctx.fillRect(0, 0, W, H);
   drawBackground();
   drawClubFx();
   drawPartyDancers();
@@ -2755,7 +3165,10 @@ function draw() {
 
   // Height indicator line at stack top
   if (stack.length > 0 && state !== 'collapsed') {
-    const stackTopScreenY = getStackTopWorld() - cameraY;
+    // getStackTopWorld() は積み面（stackHeight 基準）でスプライト中央に見えるため、
+    // 見た目の上辺（height 基準）に合わせる
+    const topItem = stack[stack.length - 1];
+    const stackTopScreenY = (topItem.y - topItem.type.height * UNIT) - cameraY;
     ctx.save();
     ctx.strokeStyle = 'rgba(255,150,100,0.25)';
     ctx.lineWidth = 2;
@@ -2879,18 +3292,6 @@ function draw() {
     ctx.ellipse(fallingDrawX, landingScreenY + 5, falling.type.width * UNIT * 0.3, 4 * UNIT, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Guide line
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,150,100,0.15)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 8]);
-    const fallCenterY = falling.screenY - falling.type.height * UNIT * 0.5;
-    ctx.beginPath();
-    ctx.moveTo(fallingDrawX, fallCenterY);
-    ctx.lineTo(fallingDrawX, landingScreenY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
   }
 
   drawCollidersDebug();
@@ -2928,13 +3329,14 @@ function draw() {
     const barW = 140 * UNIT;
     const barH = 12 * UNIT;
     const barX = (W - barW) / 2;
-    const barY = 18 * UNIT;
+    // 上辺に張り付かないよう余白を確保（ラベルの文字上端で約 22*UNIT の空き）
+    const barY = 50 * UNIT;
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = `900 ${Math.round(18 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
     const pulse = 0.7 + 0.3 * Math.sin(gameElapsed * 9);
     ctx.fillStyle = `rgba(255,179,0,${pulse})`;
-    ctx.fillText('✨ FEVER ✨', W / 2, barY - 5 * UNIT);
+    ctx.fillText('✨ FEVER ✨', W / 2, barY - 8 * UNIT);
     // バー枠
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
     ctx.beginPath();
@@ -2949,6 +3351,12 @@ function draw() {
     ctx.roundRect(barX, barY, barW * ratio, barH, barH / 2);
     ctx.fill();
     ctx.restore();
+  }
+
+  // 崩壊フラッシュ（白 → 素早くフェードアウト）
+  if (collapseFlash > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${(0.85 * collapseFlash).toFixed(3)})`;
+    ctx.fillRect(0, 0, W, H);
   }
 
   updateWobbleMeter();
