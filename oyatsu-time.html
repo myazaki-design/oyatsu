@@ -239,15 +239,23 @@
   }
   #title-logo {
     width: min(78%, 330px); height: auto;
-    filter: drop-shadow(0 8px 18px rgba(205,150,105,0.4)) drop-shadow(0 2px 4px rgba(255,255,255,0.6));
+    /* ドロップシャドウなし・ほんのり白の光彩のみ */
+    filter: drop-shadow(0 0 14px rgba(255,255,255,0.75));
     animation: float 2.6s ease-in-out infinite;
     margin-bottom: 4px;
     pointer-events: none;
   }
-  /* ロゴ下のフレーバーテキスト */
+  /* ロゴ下のフレーバーテキスト（影は濃いめ） */
   .flavor-text {
     font-size: 16px; color: #fff; font-weight: 700; margin-bottom: 24px;
-    text-shadow: 0 1px 3px rgba(125,80,50,0.75), 0 0 12px rgba(125,80,50,0.5);
+    text-shadow: 0 1px 3px rgba(90,55,30,0.95), 0 0 12px rgba(90,55,30,0.75);
+  }
+  /* TOPのボタンはドロップシャドウなし・ほんのり光彩（立体の底エッジは残す） */
+  #start-screen .btn {
+    box-shadow: 0 7px 0 var(--tsum-pink-shadow), 0 0 20px rgba(255,255,255,0.65), inset 0 3px 0 rgba(255,255,255,0.55);
+  }
+  #start-screen .btn-sub {
+    box-shadow: 0 5px 0 #e9cdb9, 0 0 18px rgba(255,255,255,0.65), inset 0 2px 0 #fff;
   }
   /* サブボタン: 不透明でツヤのある白系（メインの赤ボタンと同じ立体感） */
   .btn-sub, .btn-pause-option {
