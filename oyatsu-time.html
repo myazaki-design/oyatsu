@@ -193,9 +193,8 @@
     animation: dialogPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
     will-change: transform, opacity;
   }
-  /* あそびかたはフレーム画像の縦横比を保って歪みを防ぐ。
-     内容のレイアウト優先: 見出しは上寄せ、ふち重なりは許容 */
-  #howto-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: flex-start; padding: 52px 40px 44px; }
+  /* あそびかた: 内容のレイアウト優先。フレームは内容量に合わせて伸縮（リザルトと同方式） */
+  #howto-screen .result-dialog { justify-content: flex-start; padding: 72px 40px 44px; }
   /* とじるボタン: 縦詰めでも潰れて文字が隠れないよう縮小禁止（枠のふちに重なってもOK） */
   #howto-screen .btn { padding: 12px 38px; font-size: 19px; margin-top: 8px; flex-shrink: 0; }
   /* あそびかた: サムネ左・説明右の行レイアウト */
@@ -593,13 +592,13 @@
 <div id="howto-screen" aria-hidden="true">
   <div class="result-dialog" role="dialog" aria-labelledby="howto-title">
     <div class="title" id="howto-title" style="font-size:22px; margin-bottom:2px;">あそびかた</div>
-    <div class="howto-divider"></div>
+    <div class="howto-divider" style="margin-bottom:22px;"></div>
     <div class="howto-rows">
       <div class="howto-row"><img src="help_image_01.png" alt=""><span>スイーツをたくさんつもう！</span></div>
       <div class="howto-row"><img src="help_image_02.png" alt=""><span>星はフィーバータイム！</span></div>
       <div class="howto-row"><img src="help_image_03.png" alt=""><span>おじゃまハムスターはよけて！</span></div>
     </div>
-    <div style="font-size:13px; color:var(--tsum-cyan); font-weight:700; margin-top:2px;">ヒント</div>
+    <div style="font-size:13px; color:var(--tsum-cyan); font-weight:700; margin-top:12px;">ヒント</div>
     <div class="howto-divider"></div>
     <div class="howto-note">🍽️ おさらは左右に動くよ<br>👆 タップで落下のスピードがアップ<br>🌡️ ずれ度に注意してね</div>
     <button class="btn" id="howto-close-btn">とじる</button>
@@ -2153,6 +2152,8 @@ function showResult() {
   document.getElementById('result-detail').textContent =
     `最大${maxStackCount}個積んだ！ (P:${totalPerfect} G:${totalGood} OK:${totalOK})`;
   document.getElementById('result-points').textContent = `+${points} pt`;
+  // リザルトのポップアップに合わせて決定音を鳴らす
+  playButtonSfx();
   document.getElementById('result-screen').style.display = 'flex';
 
   lastSessionCollapseLog = playCollapseLog.slice();
