@@ -834,6 +834,11 @@ function applySfxVolume() {
   SFX_GAMEOVER.volume = v;
   SFX_BUTTON.volume = v;
   BGM_MAIN.volume = v * BGM_MAIN_VOL;
+  // iOS Safari 等は .volume を無視するため muted も併用してSE/BGMを確実に制御する
+  const mute = !sfxEnabled;
+  [SFX_LAND_SWEET, SFX_HAMSTER_EAT, SFX_STAR, SFX_STAR_GET, SFX_GAMEOVER, SFX_BUTTON, BGM_MAIN]
+    .forEach((a) => { a.muted = mute; });
+  for (const a of PYON_POOL) a.muted = mute;
 }
 
 function playSweetLandSfx() {
@@ -881,6 +886,8 @@ document.addEventListener('click', (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
   if (btn.id === 'pause-giveup') return; // あきらめるはゲームオーバーSEを鳴らすため決定音なし
+  // 音量トグルはハンドラ側で鳴らす（OFFにした直後に鳴るのを防ぐ。ONにしたときだけ鳴る）
+  if (btn.id === 'pause-sound-toggle' || btn.id === 'sound-toggle-btn') return;
   playButtonSfx();
 }, true);
 
@@ -2260,6 +2267,7 @@ document.getElementById('pause-sound-toggle').addEventListener('click', (e) => {
   applySfxVolume();
   updatePauseSoundToggleLabel();
   updateSoundToggleBtn();
+  if (sfxEnabled) playButtonSfx(); // ONにしたときだけ確認音
 });
 
 // TOP画面の音声オン/オフボタン（一時停止メニューのトグルと状態を共有）
@@ -2273,6 +2281,7 @@ document.getElementById('sound-toggle-btn').addEventListener('click', (e) => {
   applySfxVolume();
   updatePauseSoundToggleLabel();
   updateSoundToggleBtn();
+  if (sfxEnabled) playButtonSfx(); // ONにしたときだけ確認音
 });
 
 // 一時停止メニュー: あそびかた（howtoダイアログは一時停止モーダルより手前に出る）
