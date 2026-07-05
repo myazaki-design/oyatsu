@@ -195,19 +195,19 @@
   }
   /* あそびかたはフレーム画像の縦横比を保って歪みを防ぐ。
      内容のレイアウト優先: 見出しは上寄せ、ふち重なりは許容 */
-  #howto-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: flex-start; padding: 44px 40px 38px; }
+  #howto-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: flex-start; padding: 52px 40px 44px; }
   /* とじるボタン: 縦詰めでも潰れて文字が隠れないよう縮小禁止（枠のふちに重なってもOK） */
   #howto-screen .btn { padding: 12px 38px; font-size: 19px; margin-top: 8px; flex-shrink: 0; }
   /* あそびかた: サムネ左・説明右の行レイアウト */
   .howto-rows {
-    display: flex; flex-direction: column; gap: 6px;
-    width: 100%; margin: 2px 0;
+    display: flex; flex-direction: column; gap: 3px;
+    width: 100%; margin: 0;
   }
   .howto-row {
     display: flex; align-items: center; gap: 12px; text-align: left;
   }
   .howto-row img {
-    width: 62px; height: 62px; flex-shrink: 0;
+    width: 74px; height: 74px; flex-shrink: 0;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(205,150,105,0.3), inset 0 1px 0 rgba(255,255,255,0.8);
   }
@@ -216,10 +216,10 @@
   }
   .howto-divider {
     width: 96%; height: 0; border-top: 1.5px dashed rgba(205,150,105,0.45);
-    margin: 4px auto; flex-shrink: 0;
+    margin: 2px auto; flex-shrink: 0;
   }
   .howto-note {
-    font-size: 12px; color: var(--ink-soft); line-height: 1.8; margin: 0;
+    font-size: 12px; color: var(--ink-soft); line-height: 1.7; margin: 0;
   }
   #howto-screen .btn { margin-top: 12px; }
   .result-dialog {
@@ -590,14 +590,14 @@
 </div>
 <div id="howto-screen" aria-hidden="true">
   <div class="result-dialog" role="dialog" aria-labelledby="howto-title">
-    <div class="title" id="howto-title" style="font-size:22px; margin-bottom:4px;">あそびかた</div>
+    <div class="title" id="howto-title" style="font-size:22px; margin-bottom:2px;">あそびかた</div>
     <div class="howto-divider"></div>
     <div class="howto-rows">
       <div class="howto-row"><img src="help_image_01.png" alt=""><span>スイーツをたくさんつもう！</span></div>
       <div class="howto-row"><img src="help_image_02.png" alt=""><span>星はフィーバータイム！</span></div>
       <div class="howto-row"><img src="help_image_03.png" alt=""><span>おじゃまハムスターはよけて！</span></div>
     </div>
-    <div style="font-size:13px; color:var(--tsum-cyan); font-weight:700; margin-top:6px;">ヒント</div>
+    <div style="font-size:13px; color:var(--tsum-cyan); font-weight:700; margin-top:2px;">ヒント</div>
     <div class="howto-divider"></div>
     <div class="howto-note">🍽️ おさらは左右に動くよ<br>👆 タップで落下のスピードがアップ<br>🌡️ ずれ度に注意してね</div>
     <button class="btn" id="howto-close-btn">とじる</button>
