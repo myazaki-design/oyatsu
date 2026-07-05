@@ -279,7 +279,9 @@
      ※ #start-screen > * の position:relative より詳細度を上げるため親IDを付ける
      見た目はサブボタン（不透明ツヤ白）と共通 */
   #start-screen #sound-toggle-btn {
-    position: fixed; top: 16px; right: 16px; z-index: 11;
+    position: fixed; z-index: 11;
+    top: calc(var(--game-top, 0px) + max(10px, env(safe-area-inset-top)));
+    right: calc(var(--game-left, 0px) + max(10px, env(safe-area-inset-right)));
     width: 38px; height: 38px; border-radius: 50%;
     background: linear-gradient(180deg, #ffffff 0%, #fff7f0 50%, #ffeadd 100%);
     border: none; overflow: hidden;
@@ -824,6 +826,7 @@ function applySfxVolume() {
   SFX_STAR_GET.volume = v;
   SFX_GAMEOVER.volume = v;
   SFX_BUTTON.volume = v;
+  BGM_MAIN.volume = v * BGM_MAIN_VOL;
 }
 
 function playSweetLandSfx() {
@@ -874,6 +877,21 @@ document.addEventListener('click', (e) => {
   playButtonSfx();
 }, true);
 
+// インゲームBGM。フィーバー中は star.mp3 がBGMになるので、partyFx に応じて引っ込める
+const BGM_MAIN = new Audio('Strawberries_in_the_Clouds.mp3');
+BGM_MAIN.preload = 'auto';
+BGM_MAIN.loop = true;
+const BGM_MAIN_VOL = 0.45;
+function startMainBgm() {
+  BGM_MAIN.currentTime = 0;
+  BGM_MAIN.volume = (sfxEnabled ? 1 : 0) * BGM_MAIN_VOL;
+  BGM_MAIN.play().catch(() => {});
+}
+function stopMainBgm() {
+  if (!BGM_MAIN.paused) BGM_MAIN.pause();
+  BGM_MAIN.currentTime = 0;
+}
+
 // 崩壊時のゲームオーバー音（ヒットストップ明けに鳴らすジングル）
 const SFX_GAMEOVER = new Audio('gameover.mp3');
 SFX_GAMEOVER.preload = 'auto';
@@ -892,9 +910,14 @@ function setPaused(p) {
   if (p) {
     isDragging = false;
     if (!SFX_STAR.paused) SFX_STAR.pause();
+    if (!BGM_MAIN.paused) BGM_MAIN.pause();
   } else {
     if (invincibleTimer > 0 && sfxEnabled && SFX_STAR.paused) {
       SFX_STAR.play().catch(() => {});
+    }
+    // プレイ再開でBGMも再開（リザルト/タイトルからの呼び出しでは state が違うので鳴らない）
+    if (state === 'falling' && sfxEnabled && BGM_MAIN.paused) {
+      BGM_MAIN.play().catch(() => {});
     }
   }
   const modal = document.getElementById('pause-modal');
@@ -2038,6 +2061,7 @@ function triggerCollapse(reasonDetail, extraFaller) {
   // 衝撃演出: 一瞬止めてフラッシュ
   collapseHitStop = 0.22;
   collapseFlash = 1;
+  stopMainBgm();
   // 崩壊SE（ゲームオーバー音）はヒットストップ明けに鳴らす
   collapseSfxPendingCount = stackSnapshot.length;
 
@@ -2078,6 +2102,7 @@ function startGame() {
   partyFx = 0; alignTimer = 0; feverEndPauseArmed = false; feverBurst = null;
   ufo = null; ufoAbductions = [];
   collapseHitStop = 0; collapseFlash = 0; collapseSfxPendingCount = null;
+  startMainBgm();
   if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
   playCollapseLog = [];
   if (typeof window !== 'undefined') window.oyatsuPlayCollapseLog = playCollapseLog;
@@ -2102,6 +2127,7 @@ function startGame() {
 function showResult() {
   state = 'result'; falling = null; mogumoguFx = null;
   ufo = null; ufoAbductions = [];
+  stopMainBgm();
   destroyMatterWorld();
   collapseCameraSmoothed = null;
   setPaused(false);
@@ -2193,6 +2219,7 @@ document.addEventListener('keyup', (e) => {
 function goToTitle() {
   state = 'start';
   falling = null; mogumoguFx = null;
+  stopMainBgm();
   destroyMatterWorld();
   setPaused(false);
   if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
@@ -2752,6 +2779,10 @@ function update(dt) {
   } else if (!SFX_STAR.paused) {
     SFX_STAR.pause();
     SFX_STAR.loop = false;
+  }
+  // メインBGMはフィーバー（star.mp3）と入れ替わりでクロスフェード
+  if (!BGM_MAIN.paused) {
+    BGM_MAIN.volume = (sfxEnabled ? 1 : 0) * BGM_MAIN_VOL * (1 - partyFx);
   }
 
   if (state === 'falling' || state === 'collapsed') {
