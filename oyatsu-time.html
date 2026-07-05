@@ -154,7 +154,7 @@
     /* トップ画像を全面背景に。文字の可読性のため上下に白系の薄いスクリムを重ねる */
     background:
       linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.02) 26%, rgba(255,255,255,0.02) 58%, rgba(255,255,255,0.45) 100%),
-      url('top_image.png') center / cover no-repeat,
+      url('top_image.jpg') center / cover no-repeat,
       linear-gradient(180deg, #ffffff 0%, #f0e9f8 100%);
   }
   /* PC ではゲームフレームの角丸に合わせる */
@@ -627,7 +627,8 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+<!-- 物理エンジンは崩壊演出でしか使わないため defer で非ブロッキング読み込み（利用側は typeof Matter でガード済み） -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
 <script>
 (function initDebugUiFromUrl() {
   try {
@@ -735,7 +736,8 @@ function closeDebugLogModal() {
 }
 
 function resize() {
-  const dpr = window.devicePixelRatio || 1;
+  // 高DPR端末（iPhone等のDPR3）では描画ピクセル数が跳ね上がるため2に制限（見た目の差はほぼない）
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
   // スマホ（タッチ主体の端末）は画面いっぱい、PC はスマホ風の縦長固定フレーム（最大 420×910）
   const isTouchDevice = (typeof window.matchMedia === 'function')
     && window.matchMedia('(pointer: coarse)').matches;
@@ -893,7 +895,7 @@ document.addEventListener('click', (e) => {
 
 // インゲームBGM。フィーバー中は star.mp3 がBGMになるので、partyFx に応じて引っ込める
 const BGM_MAIN = new Audio('Strawberries_in_the_Clouds.mp3');
-BGM_MAIN.preload = 'auto';
+BGM_MAIN.preload = 'metadata'; // 1.3MB あるので起動時は読み込まない（はじめる押下時にロード）
 BGM_MAIN.loop = true;
 const BGM_MAIN_VOL = 0.45;
 function startMainBgm() {
@@ -2355,6 +2357,25 @@ document.getElementById('debug-log-modal').addEventListener('click', (e) => {
 });
 
 // --- Drawing ---
+// グロー用スプライト。shadowBlur は毎フレームだと非常に重いため、
+// 事前描画した放射グラデ画像をアイテムの背後に重ねる方式にする
+let _glowSprite = null;
+function getGlowSprite() {
+  if (_glowSprite) return _glowSprite;
+  const s = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(s / 2, s / 2, s * 0.12, s / 2, s / 2, s / 2);
+  grad.addColorStop(0, 'rgba(255,220,80,0.85)');
+  grad.addColorStop(0.6, 'rgba(255,220,80,0.32)');
+  grad.addColorStop(1, 'rgba(255,220,80,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, s, s);
+  _glowSprite = c;
+  return c;
+}
+
 // y はスプライト下端（足元）。物理の s.y / falling.screenY / 着地 surface と揃える。
 function drawOyatsu(type, x, y, angle, scaleX, scaleY, glowAlpha) {
   const sx = scaleX || 1;
@@ -2364,8 +2385,12 @@ function drawOyatsu(type, x, y, angle, scaleX, scaleY, glowAlpha) {
   const centerY = y - drawH * 0.5;
   ctx.save();
   if (glowAlpha > 0) {
-    ctx.shadowColor = `rgba(255,220,80,${glowAlpha})`;
-    ctx.shadowBlur = 18 * UNIT;
+    const gs = getGlowSprite();
+    const gw = drawW * 1.9, gh = drawH * 1.9;
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = prevAlpha * Math.min(1, glowAlpha);
+    ctx.drawImage(gs, x - gw / 2, centerY - gh / 2, gw, gh);
+    ctx.globalAlpha = prevAlpha;
   }
   ctx.translate(x, centerY);
   if (angle) ctx.rotate(angle);
@@ -2798,9 +2823,13 @@ function update(dt) {
     SFX_STAR.pause();
     SFX_STAR.loop = false;
   }
-  // メインBGMはフィーバー（star.mp3）と入れ替わりでクロスフェード
-  if (!BGM_MAIN.paused) {
-    BGM_MAIN.volume = (sfxEnabled ? 1 : 0) * BGM_MAIN_VOL * (1 - partyFx);
+  // フィーバー中はメインBGMを一時停止（star.mp3 と同時に鳴らさない）。
+  // 音量での制御は iOS で効かないため pause/play で確実に切り替える
+  if (partyFx > 0.02) {
+    if (!BGM_MAIN.paused) BGM_MAIN.pause();
+  } else if (state === 'falling' && !paused && sfxEnabled && BGM_MAIN.paused) {
+    BGM_MAIN.volume = BGM_MAIN_VOL;
+    BGM_MAIN.play().catch(() => {});
   }
 
   if (state === 'falling' || state === 'collapsed') {
@@ -3599,6 +3628,8 @@ const SKY_PLANETS = [
 // 空グラデーションの開始高度オフセット。背景画像の上端までは #9ad9fb のままにして、
 // 画像が切れた先からグラデーションが始まるようにする（drawSky で毎フレーム更新）
 let skyAltOffset = 0;
+// 空グラデーションのキャッシュ（高度16px刻みで再生成）
+const _skyGradCache = { key: null, grad: null };
 
 function drawSky() {
   // 背景画像の上端の高度を求める（画像下端アンカー = H + camBase、上端 = その dh 上）
@@ -3608,15 +3639,21 @@ function drawSky() {
     const camBase = PLATE_Y - H * 0.82;
     skyAltOffset = Math.max(0, dh - camBase);
   }
-  // 画面を世界座標の高度に応じた縦グラデーションで塗る
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  const SAMPLES = 6;
-  for (let i = 0; i <= SAMPLES; i++) {
-    const sy = (H * i) / SAMPLES;
-    const alt = PLATE_Y - cameraY - sy - skyAltOffset;
-    g.addColorStop(i / SAMPLES, skyColorCssAt(alt));
+  // 画面を世界座標の高度に応じた縦グラデーションで塗る。
+  // createLinearGradient は毎フレームだと重いので、高度が16px動いたときだけ作り直す
+  const gradKey = Math.round((PLATE_Y - cameraY - skyAltOffset) / 16) + ':' + Math.round(H);
+  if (_skyGradCache.key !== gradKey) {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    const SAMPLES = 6;
+    for (let i = 0; i <= SAMPLES; i++) {
+      const sy = (H * i) / SAMPLES;
+      const alt = PLATE_Y - cameraY - sy - skyAltOffset;
+      g.addColorStop(i / SAMPLES, skyColorCssAt(alt));
+    }
+    _skyGradCache.key = gradKey;
+    _skyGradCache.grad = g;
   }
-  ctx.fillStyle = g;
+  ctx.fillStyle = _skyGradCache.grad;
   ctx.fillRect(0, 0, W, H);
 
   const now = performance.now() / 1000;
@@ -3660,31 +3697,35 @@ function drawSky() {
   }
   ctx.globalAlpha = 1;
 
-  // 遠くの惑星（宇宙域）
+  // 遠くの惑星（宇宙域）。グラデーションはローカル座標で1回だけ生成してキャッシュ
   for (const p of SKY_PLANETS) {
     const sy = PLATE_Y - p.alt - cameraY;
     const r = p.r * UNIT;
     if (sy < -r * 2.4 || sy > H + r * 2.4) continue;
     const x = p.xFrac * W;
+    if (!p._grad || p._gradR !== r) {
+      const grad = ctx.createRadialGradient(-r * 0.4, -r * 0.4, r * 0.15, 0, 0, r);
+      grad.addColorStop(0, p.base);
+      grad.addColorStop(1, p.dark);
+      p._grad = grad;
+      p._gradR = r;
+    }
+    ctx.save();
+    ctx.translate(x, sy);
     // 本体: 左上から光が当たる球
-    const grad = ctx.createRadialGradient(x - r * 0.4, sy - r * 0.4, r * 0.15, x, sy, r);
-    grad.addColorStop(0, p.base);
-    grad.addColorStop(1, p.dark);
-    ctx.fillStyle = grad;
+    ctx.fillStyle = p._grad;
     ctx.beginPath();
-    ctx.arc(x, sy, r, 0, Math.PI * 2);
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
     if (p.ring) {
-      ctx.save();
-      ctx.translate(x, sy);
       ctx.rotate(-0.35);
       ctx.strokeStyle = 'rgba(232,192,122,0.65)';
       ctx.lineWidth = r * 0.16;
       ctx.beginPath();
       ctx.ellipse(0, 0, r * 1.65, r * 0.5, 0, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.restore();
     }
+    ctx.restore();
   }
 }
 
