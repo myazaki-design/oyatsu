@@ -2884,7 +2884,7 @@ function drawFeverBurst() {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 10 * UNIT;
-  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.strokeStyle = 'rgba(255,233,168,0.95)'; // クリーム色(#ffe9a8)。他の演出と統一
   ctx.strokeText('FEVER!!', 0, 0);
   const hue = (gameElapsed * 240) % 360;
   ctx.fillStyle = `hsl(${hue}, 95%, 58%)`;
