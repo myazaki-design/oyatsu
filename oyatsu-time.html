@@ -1046,6 +1046,14 @@ const FEVER_EDGE_PAUSE_MS = 1000;
 const POWERUP_FALL_SPEED_MULT = 2.4;
 /** 全体の落下速度スケール（1.2倍ゆっくり = 1/1.2） */
 const FALL_SPEED_SCALE = 1 / 1.2;
+/** 落下の重力演出: spawn 速度を初速の何割から始めるか（残りは重力で加速） */
+const FALL_START_FRAC = 0.45;
+/** 終端速度 = cruise 速度 × この倍率。旧仕様(=cruise)とほぼ同じにして難易度を維持しつつ衝撃を少しだけ増す */
+const FALL_TERMINAL_MULT = 1.05;
+/** 重力加速度（UNIT/フレーム²、fs でフレームレート補正）。加速ランプが目に見える程度に緩やか */
+const FALL_GRAVITY = 0.24;
+/** タップ急降下の速度（UNIT/フレーム） */
+const FALL_FAST_DROP = 80;
 /** 最初のフィーバーになるまでの追加スロー（さらに1.2倍ゆっくり） */
 const PRE_FEVER_SLOW = 1 / 1.2;
 /** フィーバー後: この差分スコアを稼ぐと最高速（＝フィーバー時の速度）に到達する */
@@ -1601,7 +1609,8 @@ function spawnFalling() {
   if (powerupArmed && invincibleTimer <= 0) {
     powerupArmed = false;
     const pSpeed = (baseSpeed + Math.random()) * UNIT * FALL_SPEED_SCALE * getDifficultySpeedMult();
-    falling = { type: POWERUP_TYPE, x, screenY: -60, speed: pSpeed, landed: false };
+    falling = { type: POWERUP_TYPE, x, screenY: -60,
+      speed: pSpeed * FALL_START_FRAC, terminal: pSpeed * FALL_TERMINAL_MULT, landed: false };
     return;
   }
 
@@ -1627,7 +1636,10 @@ function spawnFalling() {
   if (invincibleTimer > 0) speed *= POWERUP_FALL_SPEED_MULT; // フィーバー中は速く落とす
 
   // フィーバー中に落ち始めたアイテムは、途中でフィーバーが切れても最後まで頂点に追従して乗る
-  falling = { type, x, screenY: -60, speed, landed: false, feverBorn: invincibleTimer > 0 };
+  // speed=初速（cruise の FALL_START_FRAC 倍）、terminal=終端速度。重力で加速する。
+  falling = { type, x, screenY: -60,
+    speed: speed * FALL_START_FRAC, terminal: speed * FALL_TERMINAL_MULT,
+    landed: false, feverBorn: invincibleTimer > 0 };
 }
 
 function addFloatingText(x, screenY, text, color, pinY) {
@@ -3163,7 +3175,11 @@ function update(dt) {
     let landTarget = null;
     if (!falling.missHandled && !falling.trapDodgeHandled) {
       if (keysDown[' '] || keysDown['s'] || keysDown['S'] || keysDown['ArrowDown']) {
-        falling.speed = 80 * UNIT;
+        // タップ急降下: 一気に速く（重力上限を超える手動オーバーライド）
+        falling.speed = Math.max(falling.speed, FALL_FAST_DROP * UNIT);
+      } else if (falling.terminal && falling.speed < falling.terminal) {
+        // 重力で終端速度まで加速（＝落ちるほど速くなり、着地の衝撃も高度に連動）
+        falling.speed = Math.min(falling.speed + FALL_GRAVITY * UNIT * fs, falling.terminal);
       }
       falling.screenY += falling.speed * fs;
       const fallingRelX = falling.x - plateX;
@@ -3435,10 +3451,11 @@ function update(dt) {
           y: landingWorldY,
           offsetX, angle: fever ? 0 : offsetX * 0.005,
           settled: false, settleTimer: 0,
-          squishTime: 0, squishStrength: 0.22 + impact * 0.3,
+          squishTime: 0, squishStrength: 0.30 + impact * 0.28,
           bounceTime: 0,
           swayX: belowSwayX, swayV: 0,
-          settleY: (3 + impact * 9) * UNIT, settleV: 0, // 一拍沈んで戻る
+          // 通常着地でも「ぽん」と沈んで戻るのが見える量に（旧: 3+impact*9 は約3.5pxで不可視）
+          settleY: (7 + impact * 10) * UNIT, settleV: 0,
         });
         // 着地が塔を実際に押す: 接点へ横インパルスを注入（フィーバー中はインパルス無し）
         const landImpulse = fever ? 0 : (offsetX * 0.6 + Math.sign(offsetX || 1) * impact * 14 * UNIT);
@@ -3446,9 +3463,9 @@ function update(dt) {
         newItem.swayV += landImpulse;
         if (insertIdx > 0 && stack[insertIdx - 1]) {
           stack[insertIdx - 1].swayV += landImpulse * 0.4;
-          // Squish the item below on impact
+          // Squish the item below on impact（下段も少し潰れて受け止める）
           stack[insertIdx - 1].squishTime = 0;
-          stack[insertIdx - 1].squishStrength = 0.1 + impact * 0.12;
+          stack[insertIdx - 1].squishStrength = 0.16 + impact * 0.14;
         }
 
         rebuildStackFootYs();
