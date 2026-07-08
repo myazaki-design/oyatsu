@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>スイーツムツム 🍩</title>
 <!-- かんたんゲームボックス(GMOメディア) 連携API。単体動作時は読み込めなくても問題ない（利用側はすべて存在ガード済み） -->
 <script defer src="https://img.kantangame.com/game/app/js/gamebox.iframe.js?v=1.5"></script>
@@ -527,12 +527,14 @@
   .wobble-meter-wrap[hidden] {
     display: none !important;
   }
-  /* ベースの背景パネル。この上に「きけん」ラベルとゲージ（溝＋フィル）が横並びで乗る */
+  /* ベースの背景パネル。この上に「きけん」ラベルとゲージ（溝＋フィル）が横並びで乗る。
+     スマホの角丸・ホームバーで中身が隠れないよう、パネルはセーフエリア分だけ下へ
+     伸ばし、ゲージ本体は padding-bottom でセーフエリアの上に収める */
   .wobble-meter-track {
     width: 100%;
-    height: 22px;
+    height: calc(22px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
-    padding: 5px 8px;
+    padding: 5px 8px calc(5px + env(safe-area-inset-bottom, 0px));
     display: flex; align-items: center; gap: 6px;
     background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,246,238,0.8));
     border: 1px solid var(--glass-line);
@@ -846,13 +848,22 @@ const IMG_CLOUD1 = loadImage('cloude01.png');
 const IMG_CLOUD2 = loadImage('cloude02.png');
 const IMG_UFO = loadImage('ufo.png');
 
-const SFX_LAND_SWEET = new Audio('pyon1.mp3');
+// iOS: 画面収録（特にマイクON）で音声セッションが通話系構成に切り替わり、
+// 録画の音が倍速/ピッチ異常になる既知問題への対策。セッション種別を「再生専用」に
+// 固定するようヒントを出す（Safari 16.4+ / 対応WKWebView。非対応環境では無視される）
+try {
+  if (navigator.audioSession && 'type' in navigator.audioSession) {
+    navigator.audioSession.type = 'playback';
+  }
+} catch (e) { /* noop */ }
+
+const SFX_LAND_SWEET = new Audio('pyon1.m4a');
 SFX_LAND_SWEET.preload = 'auto';
 
 // 崩壊中、複数のお菓子が同時に着地/干渉しても重ねて鳴らせるよう pyon1.mp3 のプール
 const PYON_POOL = [];
 for (let i = 0; i < 8; i++) {
-  const a = new Audio('pyon1.mp3');
+  const a = new Audio('pyon1.m4a');
   a.preload = 'auto';
   PYON_POOL.push(a);
 }
@@ -904,7 +915,7 @@ function playHamsterEatSfx() {
   SFX_HAMSTER_EAT.play().catch(() => {});
 }
 
-const SFX_STAR = new Audio('star.mp3');
+const SFX_STAR = new Audio('star.m4a');
 SFX_STAR.preload = 'auto';
 
 function playStarSfx() {
@@ -914,7 +925,7 @@ function playStarSfx() {
   SFX_STAR.play().catch(() => {});
 }
 
-const SFX_STAR_GET = new Audio('starget.mp3');
+const SFX_STAR_GET = new Audio('starget.m4a');
 SFX_STAR_GET.preload = 'auto';
 
 function playStarGetSfx() {
@@ -990,6 +1001,24 @@ function setPaused(p) {
     modal.setAttribute('aria-hidden', p ? 'false' : 'true');
   }
 }
+
+// バックグラウンド（アプリ切替・画面ロック・タブ切替）で音が鳴り続けないように全停止する。
+// プレイ中なら一時停止モーダルも出す（復帰時はプレイヤーが「再開」を押して戻る）。
+function stopAllAudioForBackground() {
+  const all = [SFX_LAND_SWEET, SFX_HAMSTER_EAT, SFX_STAR, SFX_STAR_GET,
+    SFX_BUTTON, SFX_GAMEOVER, BGM_MAIN, ...PYON_POOL];
+  for (const a of all) {
+    try { if (!a.paused) a.pause(); } catch (e) { /* noop */ }
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    if ((state === 'falling' || state === 'collapsed') && !paused) setPaused(true);
+    stopAllAudioForBackground();
+  }
+});
+// iOSはタブ/アプリ終了時に visibilitychange が飛ばないことがあるため pagehide でも止める
+window.addEventListener('pagehide', stopAllAudioForBackground);
 
 let _prevHudCount = -1;
 function syncHudCountDisplay() {
