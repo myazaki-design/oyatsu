@@ -192,7 +192,7 @@
     }
   }
   /* リザルト/あそびかた/コンティニューはインゲームの上に重なるダイアログ（一時停止モーダルと同系） */
-  #result-screen, #howto-screen, #continue-screen, #ranking-screen {
+  #result-screen, #howto-screen, #continue-screen, #ranking-screen, #name-screen {
     position: fixed; inset: 0; z-index: 46; display: none;
     align-items: center; justify-content: center; padding: 24px;
     background: rgba(240, 235, 250, 0.45); backdrop-filter: blur(10px) saturate(1.2);
@@ -212,9 +212,23 @@
     80%  { transform: scale(1.01) translateY(-1px); }
     100% { transform: scale(1) translateY(0); opacity: 1; }
   }
-  #result-screen, #howto-screen, #continue-screen, #ranking-screen, .pause-modal.is-open {
+  #result-screen, #howto-screen, #continue-screen, #ranking-screen, #name-screen, .pause-modal.is-open {
     animation: overlayFadeIn 0.1s ease-out both;
   }
+  /* 名前入力（せかいランキング用）。リザルトの上に重ねる */
+  #name-screen { z-index: 48; }
+  #name-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: center; }
+  .name-text { font-size: 14px; color: var(--ink); font-weight: 700; line-height: 1.9; margin: 8px 0 14px; }
+  #name-input {
+    width: 82%; padding: 10px 12px; margin-bottom: 18px;
+    border-radius: 14px; border: 1.5px solid rgba(205,150,105,0.45);
+    background: rgba(255,255,255,0.85);
+    font-family: inherit; font-size: 16px; font-weight: 700; color: var(--ink);
+    text-align: center; outline: none;
+  }
+  #name-input:focus { border-color: var(--accent); }
+  #name-screen .btn { padding: 12px 40px; font-size: 17px; flex-shrink: 0; }
+  #name-screen .btn-sub { margin: 14px 0 0; padding: 9px 30px; font-size: 13px; }
   /* コンティニュー: 中身が少ないのでフレーム比率を保って中央寄せ */
   #continue-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: center; }
   .continue-text {
@@ -233,6 +247,26 @@
   #ranking-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: flex-start; padding: 60px 40px 44px; }
   /* とじるは下部に固定（リストの量に関わらず） */
   #ranking-close-btn { margin-top: auto; flex-shrink: 0; }
+  /* じぶんのきろく / せかい の切り替えタブ（iOSアプリでのみ表示） */
+  .ranking-tabs { display: flex; gap: 8px; width: 100%; margin: 6px 0 2px; flex-shrink: 0; }
+  .ranking-tab {
+    flex: 1; padding: 8px 6px; border-radius: 999px;
+    border: 1px solid rgba(205,150,105,0.35);
+    background: rgba(255,255,255,0.5); color: var(--ink-soft);
+    font-family: inherit; font-size: 13px; font-weight: 900; cursor: pointer;
+  }
+  .ranking-tab.is-active {
+    background: linear-gradient(180deg, var(--tsum-pink-light), var(--tsum-pink));
+    color: #fff; border-color: transparent;
+    text-shadow: 0 1px 0 rgba(178,58,143,0.4);
+  }
+  /* せかいランキングの行（名前つき） */
+  .ranking-row .nm {
+    flex: 1; text-align: left; font-size: 13px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ranking-row.world .sc { flex: 0 0 auto; text-align: right; }
+  .ranking-msg { font-size: 13px; color: var(--ink-soft); margin: 24px 0; text-align: center; }
   .ranking-list {
     width: 100%; display: flex; flex-direction: column; gap: 7px;
     margin: 10px 0 12px;
@@ -729,8 +763,21 @@
 <div id="ranking-screen" aria-hidden="true">
   <div class="result-dialog" role="dialog" aria-labelledby="ranking-title">
     <div class="title" id="ranking-title" style="font-size:24px;">ランキング</div>
+    <div class="ranking-tabs" id="ranking-tabs" style="display:none;">
+      <button type="button" class="ranking-tab is-active" id="ranking-tab-local">じぶんのきろく</button>
+      <button type="button" class="ranking-tab" id="ranking-tab-world">せかい</button>
+    </div>
     <div class="ranking-list" id="ranking-list"></div>
     <button class="btn" id="ranking-close-btn">とじる</button>
+  </div>
+</div>
+<div id="name-screen" aria-hidden="true">
+  <div class="result-dialog" role="dialog" aria-labelledby="name-title">
+    <div class="title" id="name-title" style="font-size:22px;">なまえをきめよう</div>
+    <div class="name-text" id="name-text">せかいランキングにのせる<br>なまえを入れてね</div>
+    <input id="name-input" maxlength="10" autocomplete="off">
+    <button class="btn" id="name-ok">けってい</button>
+    <button class="btn-sub" id="name-skip">あとで</button>
   </div>
 </div>
 <div id="howto-screen" aria-hidden="true">
@@ -839,6 +886,16 @@ const I18N = {
     ranking_title: 'ランキング',
     ranking_empty: 'まだきろくがないよ',
     rank_in: '🎉 {n}位にランクイン！',
+    rank_tab_local: 'じぶんのきろく',
+    rank_tab_world: 'せかい',
+    world_loading: 'よみこみちゅう…',
+    world_error: 'つうしんエラー。またあとでためしてね',
+    world_empty: 'まだきろくがないよ',
+    world_preparing: 'じゅんびちゅう',
+    name_title: 'なまえをきめよう',
+    name_text: 'せかいランキングにのせる<br>なまえを入れてね',
+    name_ok: 'けってい',
+    name_later: 'あとで',
   },
   en: {
     doc_title: 'Sweets Tower 🍩',
@@ -879,6 +936,16 @@ const I18N = {
     ranking_title: 'RANKING',
     ranking_empty: 'No records yet',
     rank_in: '🎉 Ranked #{n}!',
+    rank_tab_local: 'My Records',
+    rank_tab_world: 'World',
+    world_loading: 'Loading...',
+    world_error: 'Connection error. Try again later',
+    world_empty: 'No records yet',
+    world_preparing: 'Coming soon',
+    name_title: 'Pick a Name',
+    name_text: 'Enter a name for<br>the world ranking',
+    name_ok: 'OK',
+    name_later: 'Later',
   },
 };
 
@@ -918,6 +985,8 @@ function t(key, params) {
     'pause-giveup': 'giveup_btn', 'pause-resume': 'resume_btn',
     'ranking-btn': 'ranking_btn', 'ranking-title': 'ranking_title',
     'ranking-close-btn': 'close_btn',
+    'ranking-tab-local': 'rank_tab_local', 'ranking-tab-world': 'rank_tab_world',
+    'name-title': 'name_title', 'name-ok': 'name_ok', 'name-skip': 'name_later',
   };
   for (const id in text) {
     const el = document.getElementById(id);
@@ -926,6 +995,7 @@ function t(key, params) {
   const html = {
     'howto-text-1': 'howto_1', 'howto-text-2': 'howto_2', 'howto-text-3': 'howto_3',
     'howto-note': 'howto_note', 'continue-text': 'continue_text',
+    'name-text': 'name_text',
   };
   for (const id in html) {
     const el = document.getElementById(id);
@@ -2467,7 +2537,7 @@ function triggerCollapse(reasonDetail, extraFaller) {
 function gbEmbedded() { return window.self !== window.top; }
 function gbOn() { return gbEmbedded() && typeof game_start === 'function'; }
 function gbAdOn() { return gbEmbedded() && typeof show_reward_ad === 'function'; }
-let userData = { best: 0, howtoSeen: 0, ranking: [] };
+let userData = { best: 0, howtoSeen: 0, ranking: [], nm: '' };
 let gbSavedThisGame = false; // game_save は1ゲーム（game_endまで）に1回まで
 // 直前のプレイのランクイン順位（リザルトのバッジ表示に使う）
 let lastRank = 0;
@@ -2511,6 +2581,7 @@ function loadUserDataLocal() {
     userData.best = +(localStorage.getItem('oyatsu_best') || 0);
     userData.howtoSeen = localStorage.getItem('oyatsu_howto_seen') ? 1 : 0;
     userData.ranking = normalizeRanking(JSON.parse(localStorage.getItem('oyatsu_ranking') || '[]'));
+    userData.nm = String(localStorage.getItem('oyatsu_name') || '').slice(0, 10);
   } catch (e) {}
 }
 
@@ -2525,6 +2596,7 @@ function loadUserData(cb) {
           userData.best = +parsed.best || 0;
           userData.howtoSeen = parsed.howtoSeen ? 1 : 0;
           userData.ranking = normalizeRanking(parsed.ranking);
+          userData.nm = String(parsed.nm || '').slice(0, 10);
         } catch (e) { /* 壊れたデータは初期値のまま */ }
         finish();
       } });
@@ -2549,6 +2621,7 @@ function saveUserData() {
     localStorage.setItem('oyatsu_best', String(userData.best));
     if (userData.howtoSeen) localStorage.setItem('oyatsu_howto_seen', '1');
     localStorage.setItem('oyatsu_ranking', JSON.stringify(userData.ranking));
+    localStorage.setItem('oyatsu_name', userData.nm || '');
   } catch (e) {}
 }
 
@@ -2725,6 +2798,7 @@ function showResult() {
   if (isNewRecord) userData.best = totalScore;
   lastRank = insertRanking(totalScore);
   saveUserData();
+  submitWorldScore(totalScore); // せかいランキング（iOSアプリ時のみ動作）
   if (gbOn() && typeof game_end === 'function') {
     try { game_end({ callback: function () {}, score: totalScore }); } catch (e) {}
   }
@@ -2877,9 +2951,97 @@ document.getElementById('pause-giveup').addEventListener('click', (e) => {
   showResult();
 });
 
-// ランキングダイアログ（ローカルTOP10）
-function openRankingDialog() {
-  const list = document.getElementById('ranking-list');
+// --- せかいランキング（自前API。iOSアプリ(Capacitor)でのみ有効） ---
+// APIのURL。バックエンド構築後に設定する（例: 'https://oyatsu-ranking.xxx.workers.dev'）。
+// 未設定の間は「じゅんびちゅう」表示（デバッグUI表示中はモックデータでUI確認できる）
+const WORLD_API_BASE = '';
+function isIosApp() {
+  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+}
+// せかいランキングを出すか: iOSアプリのみ。開発確認用にデバッグUI表示中も有効。
+// GMO（かんたんゲームボックス）ではポータル側のランキングがあるため出さない
+function worldRankingOn() {
+  if (gbEmbedded()) return false;
+  return isIosApp() || document.documentElement.classList.contains('show-debug-ui');
+}
+
+// 簡易署名（気軽なスコア偽装への抑止。厳密な防御ではない）
+function worldSig(s) {
+  let h = 5381;
+  s = s + ':oyatsu-mutsumu-2026';
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+function fetchWorldTop() {
+  if (!WORLD_API_BASE) {
+    // 未設定: デバッグ中はモックでUI確認、それ以外は null（じゅんびちゅう表示）
+    if (document.documentElement.classList.contains('show-debug-ui')) {
+      return Promise.resolve([
+        { n: 'ぴょんきち', s: 12840 }, { n: 'SweetsFan', s: 11020 }, { n: 'はむたろう', s: 9800 },
+        { n: 'Mio', s: 8321 }, { n: 'ケーキだいすき', s: 7777 }, { n: 'Taku', s: 6543 },
+        { n: 'あんこ', s: 5332 }, { n: 'Nana', s: 4100 }, { n: 'ぷりん', s: 2500 }, { n: 'GG', s: 900 },
+      ]);
+    }
+    return Promise.resolve(null);
+  }
+  return fetch(WORLD_API_BASE + '/top?limit=30').then((r) => {
+    if (!r.ok) throw new Error('http ' + r.status);
+    return r.json();
+  });
+}
+
+// スコア送信（リザルト時に自動）。名前未設定なら入力ダイアログを出してから送る
+let pendingWorldScore = 0;
+function submitWorldScore(score) {
+  if (!worldRankingOn() || !(score > 0)) return;
+  if (!userData.nm) {
+    pendingWorldScore = score;
+    showNameDialog();
+    return;
+  }
+  postWorldScore(score);
+}
+function postWorldScore(score) {
+  if (!WORLD_API_BASE) return; // バックエンド未構築の間は送らない
+  try {
+    fetch(WORLD_API_BASE + '/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ n: userData.nm, s: score, g: worldSig(userData.nm + ':' + score) }),
+    }).catch(function () {});
+  } catch (e) {}
+}
+
+function showNameDialog() {
+  const el = document.getElementById('name-screen');
+  document.getElementById('name-input').value = userData.nm || '';
+  el.style.display = 'flex';
+  el.setAttribute('aria-hidden', 'false');
+}
+function hideNameDialog() {
+  const el = document.getElementById('name-screen');
+  el.style.display = 'none';
+  el.setAttribute('aria-hidden', 'true');
+}
+document.getElementById('name-ok').addEventListener('click', function (e) {
+  e.preventDefault();
+  const v = document.getElementById('name-input').value.trim().slice(0, 10);
+  if (!v) return; // 空なら閉じない
+  userData.nm = v;
+  if (!gbOn()) saveUserData();
+  hideNameDialog();
+  if (pendingWorldScore > 0) { postWorldScore(pendingWorldScore); pendingWorldScore = 0; }
+});
+document.getElementById('name-skip').addEventListener('click', function (e) {
+  e.preventDefault();
+  pendingWorldScore = 0;
+  hideNameDialog();
+});
+
+// ランキングダイアログ（じぶんのきろく / せかい）
+let rankingTab = 'local';
+function renderLocalRanking(list) {
   const medals = ['🥇', '🥈', '🥉'];
   // 常にRANKING_MAX枠表示（記録がない枠は空スロット）。1〜3位はメダル色の下地
   let html = '';
@@ -2892,10 +3054,56 @@ function openRankingDialog() {
       + '<span class="dt">' + (e ? formatRankTime(e.t) : '') + '</span></div>';
   }
   list.innerHTML = html;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function renderWorldRanking(list) {
+  const medals = ['🥇', '🥈', '🥉'];
+  list.innerHTML = '<div class="ranking-msg">' + t('world_loading') + '</div>';
+  fetchWorldTop().then(function (rows) {
+    if (rankingTab !== 'world') return; // 表示中にタブが変わっていたら捨てる
+    if (rows === null) { list.innerHTML = '<div class="ranking-msg">' + t('world_preparing') + '</div>'; return; }
+    if (!rows.length) { list.innerHTML = '<div class="ranking-msg">' + t('world_empty') + '</div>'; return; }
+    list.innerHTML = rows.map(function (e, i) {
+      const tier = i < 3 ? ' top' + (i + 1) : '';
+      return '<div class="ranking-row world' + tier + '">'
+        + '<span class="rk">' + (medals[i] || (i + 1)) + '</span>'
+        + '<span class="nm">' + escapeHtml(e.n) + '</span>'
+        + '<span class="sc">' + (+e.s || 0) + '</span></div>';
+    }).join('');
+  }).catch(function () {
+    if (rankingTab !== 'world') return;
+    list.innerHTML = '<div class="ranking-msg">' + t('world_error') + '</div>';
+  });
+}
+function switchRankingTab(tab) {
+  rankingTab = tab;
+  document.getElementById('ranking-tab-local').classList.toggle('is-active', tab === 'local');
+  document.getElementById('ranking-tab-world').classList.toggle('is-active', tab === 'world');
+  const list = document.getElementById('ranking-list');
+  list.scrollTop = 0;
+  if (tab === 'world') renderWorldRanking(list);
+  else renderLocalRanking(list);
+}
+function openRankingDialog() {
+  // タブはせかいランキング有効時のみ。無効時はローカル単独（従来どおり）
+  document.getElementById('ranking-tabs').style.display = worldRankingOn() ? 'flex' : 'none';
+  switchRankingTab('local');
   const el = document.getElementById('ranking-screen');
   el.style.display = 'flex';
   el.setAttribute('aria-hidden', 'false');
 }
+document.getElementById('ranking-tab-local').addEventListener('click', function (e) {
+  e.preventDefault();
+  switchRankingTab('local');
+});
+document.getElementById('ranking-tab-world').addEventListener('click', function (e) {
+  e.preventDefault();
+  switchRankingTab('world');
+});
 document.getElementById('ranking-btn').addEventListener('click', function (e) {
   e.preventDefault();
   openRankingDialog();
