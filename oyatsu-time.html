@@ -192,7 +192,7 @@
     }
   }
   /* リザルト/あそびかた/コンティニューはインゲームの上に重なるダイアログ（一時停止モーダルと同系） */
-  #result-screen, #howto-screen, #continue-screen {
+  #result-screen, #howto-screen, #continue-screen, #ranking-screen {
     position: fixed; inset: 0; z-index: 46; display: none;
     align-items: center; justify-content: center; padding: 24px;
     background: rgba(240, 235, 250, 0.45); backdrop-filter: blur(10px) saturate(1.2);
@@ -212,7 +212,7 @@
     80%  { transform: scale(1.01) translateY(-1px); }
     100% { transform: scale(1) translateY(0); opacity: 1; }
   }
-  #result-screen, #howto-screen, #continue-screen, .pause-modal.is-open {
+  #result-screen, #howto-screen, #continue-screen, #ranking-screen, .pause-modal.is-open {
     animation: overlayFadeIn 0.1s ease-out both;
   }
   /* コンティニュー: 中身が少ないのでフレーム比率を保って中央寄せ */
@@ -222,6 +222,68 @@
   }
   #continue-screen .btn { padding: 13px 26px; font-size: 16px; flex-shrink: 0; }
   #continue-screen .btn-sub { margin: 25px 0 0; padding: 10px 34px; font-size: 14px; }
+  /* ランキング（ローカルTOP10） */
+  /* ベストスコア表示の直下に置く */
+  #ranking-btn { margin: 0 0 16px; }
+  /* 言語（ja/en）で文字数が変わってもボタン幅が揃うよう最小幅を固定 */
+  #start-screen .btn-sub { min-width: 200px; }
+  #start-screen .btn { min-width: 230px; }
+  #howto-screen .btn, #ranking-screen .btn, #result-screen .btn { min-width: 180px; }
+  /* フレーム画像の縦横比を固定して潰れを防ぐ */
+  #ranking-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: flex-start; padding: 60px 40px 44px; }
+  /* とじるは下部に固定（リストの量に関わらず） */
+  #ranking-close-btn { margin-top: auto; flex-shrink: 0; }
+  .ranking-list {
+    width: 100%; display: flex; flex-direction: column; gap: 7px;
+    margin: 10px 0 12px;
+    /* 10件はフレームに収まらないので、リストだけ内部スクロール */
+    flex: 1 1 auto; min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 4px;
+  }
+  .ranking-list::-webkit-scrollbar { width: 5px; }
+  .ranking-list::-webkit-scrollbar-thumb { background: rgba(205,150,105,0.4); border-radius: 999px; }
+  .ranking-list::-webkit-scrollbar-track { background: rgba(205,150,105,0.12); border-radius: 999px; }
+  .ranking-row { flex-shrink: 0; }
+  .ranking-row {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 900; color: var(--ink); font-size: 15px;
+    padding: 5px 12px; border-radius: 12px;
+    /* デフォルトでうっすら枠と下地を敷く */
+    background: rgba(255,255,255,0.4);
+    border: 1px solid rgba(205,150,105,0.28);
+    box-sizing: border-box;
+  }
+  .ranking-row .rk { width: 30px; text-align: center; flex-shrink: 0; font-size: 14px; color: var(--ink-soft); }
+  .ranking-row .sc { flex: 1; text-align: left; font-size: 16px; }
+  .ranking-row .dt { flex-shrink: 0; text-align: right; font-size: 10px; font-weight: 700; color: var(--ink-soft); }
+  /* 1位は大きく・ゴールドの下地で目立たせる */
+  .ranking-row.top1 {
+    padding: 12px 14px; border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255,246,214,0.75), rgba(255,232,170,0.6));
+    border-color: rgba(230,180,90,0.6);
+  }
+  .ranking-row.top1 .rk { font-size: 26px; width: 40px; }
+  .ranking-row.top1 .sc { font-size: 27px; }
+  .ranking-row.top1 .dt { font-size: 11px; }
+  /* 2位はシルバー、3位はブロンズの下地をうっすら（サイズは他と同じ） */
+  .ranking-row.top2 {
+    background: linear-gradient(180deg, rgba(242,246,252,0.75), rgba(222,230,240,0.55));
+    border-color: rgba(150,165,185,0.5);
+  }
+  .ranking-row.top3 {
+    background: linear-gradient(180deg, rgba(252,238,226,0.75), rgba(242,218,196,0.55));
+    border-color: rgba(200,140,90,0.5);
+  }
+  /* 記録のない空スロット */
+  .ranking-row.empty .sc { color: var(--ink-soft); opacity: 0.5; }
+  /* リザルトのランクイン表示（2位以下。1位はNEW RECORD） */
+  #result-rankin {
+    font-size: 14px; font-weight: 900; color: var(--accent);
+    margin: 2px 0;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.9);
+  }
   /* リザルトのNEW RECORD表示 */
   #result-newrecord {
     font-size: 15px; font-weight: 900; color: var(--accent);
@@ -660,8 +722,16 @@
   <img id="title-logo" src="logo.png" alt="スイーツムツム">
   <div class="flavor-text" id="flavor-text">✨ スイーツをたくさんつもう！ ✨</div>
   <div id="title-best" class="title-best" style="display:none;"><span id="title-best-label">🏆 ベスト</span> <span id="title-best-num">0</span></div>
+  <button class="btn-sub" id="ranking-btn">ランキング</button>
   <button class="btn-sub" id="howto-btn">あそびかた</button>
   <button class="btn" id="start-btn">はじめる</button>
+</div>
+<div id="ranking-screen" aria-hidden="true">
+  <div class="result-dialog" role="dialog" aria-labelledby="ranking-title">
+    <div class="title" id="ranking-title" style="font-size:24px;">ランキング</div>
+    <div class="ranking-list" id="ranking-list"></div>
+    <button class="btn" id="ranking-close-btn">とじる</button>
+  </div>
 </div>
 <div id="howto-screen" aria-hidden="true">
   <div class="result-dialog" role="dialog" aria-labelledby="howto-title">
@@ -692,6 +762,7 @@
     <div id="result-breakdown" style="font-size:14px; color:var(--ink-soft); line-height:2; margin:8px 0;"></div>
     <div style="width:60%; height:1px; background:rgba(205,150,105,0.3); margin:8px auto;"></div>
     <div id="result-newrecord" style="display:none;">✨ NEW RECORD! ✨</div>
+    <div id="result-rankin" style="display:none;"></div>
     <div class="result-score-box">
       <div id="result-total-label" style="font-size:12px; color:var(--tsum-cyan); font-weight:700;">ごうけいスコア</div>
       <div class="result-score" id="result-score">0</div>
@@ -764,6 +835,10 @@ const I18N = {
     r_detail: 'さいだい{n}コつんだ！ (P:{p} G:{g} OK:{ok})',
     mogu: 'もぐ',
     yum: '…おいし♪',
+    ranking_btn: 'ランキング',
+    ranking_title: 'ランキング',
+    ranking_empty: 'まだきろくがないよ',
+    rank_in: '🎉 {n}位にランクイン！',
   },
   en: {
     doc_title: 'Sweets Tower 🍩',
@@ -800,6 +875,10 @@ const I18N = {
     r_detail: 'Stacked {n} max! (P:{p} G:{g} OK:{ok})',
     mogu: 'Nom',
     yum: '...Yum!♪',
+    ranking_btn: 'Ranking',
+    ranking_title: 'RANKING',
+    ranking_empty: 'No records yet',
+    rank_in: '🎉 Ranked #{n}!',
   },
 };
 
@@ -837,6 +916,8 @@ function t(key, params) {
     'wobble-meter-title': 'danger',
     'pause-modal-title': 'pause_title', 'pause-howto': 'howto_btn',
     'pause-giveup': 'giveup_btn', 'pause-resume': 'resume_btn',
+    'ranking-btn': 'ranking_btn', 'ranking-title': 'ranking_title',
+    'ranking-close-btn': 'close_btn',
   };
   for (const id in text) {
     const el = document.getElementById(id);
@@ -2386,13 +2467,50 @@ function triggerCollapse(reasonDetail, extraFaller) {
 function gbEmbedded() { return window.self !== window.top; }
 function gbOn() { return gbEmbedded() && typeof game_start === 'function'; }
 function gbAdOn() { return gbEmbedded() && typeof show_reward_ad === 'function'; }
-let userData = { best: 0, howtoSeen: 0 };
+let userData = { best: 0, howtoSeen: 0, ranking: [] };
 let gbSavedThisGame = false; // game_save は1ゲーム（game_endまで）に1回まで
+// 直前のプレイのランクイン順位（リザルトのバッジ表示に使う）
+let lastRank = 0;
+
+// ランキングの保持件数（TOP10。表示エリアはスクロール対応）
+const RANKING_MAX = 10;
+
+// ランキング配列の正規化（不正値除去・降順・最大件数）。既存ユーザーは best から移行
+// エントリ: { s: スコア, t: 記録日時(エポックms。旧データはなし=0) }
+function normalizeRanking(arr) {
+  const list = (Array.isArray(arr) ? arr : [])
+    .map((e) => ({ s: Math.floor(+((e && e.s)) || 0), t: Math.floor(+((e && e.t)) || 0) }))
+    .filter((e) => e.s > 0);
+  list.sort((a, b) => b.s - a.s);
+  list.length = Math.min(list.length, RANKING_MAX);
+  if (list.length === 0 && userData.best > 0) list.push({ s: userData.best, t: 0 });
+  return list;
+}
+
+// スコアをランキングへ挿入し、入った順位（1〜RANKING_MAX）を返す。圏外は 0
+function insertRanking(score) {
+  if (!(score > 0)) return 0;
+  userData.ranking.push({ s: score, t: Date.now() });
+  userData.ranking.sort((a, b) => b.s - a.s);
+  if (userData.ranking.length > RANKING_MAX) userData.ranking.length = RANKING_MAX;
+  const idx = userData.ranking.findIndex((e) => e.s === score);
+  return idx >= 0 ? idx + 1 : 0;
+}
+
+// 記録日時の表示（例: 2026/7/11 23:42）。旧データ（日時なし）は空文字
+function formatRankTime(t) {
+  if (!t) return '';
+  const d = new Date(t);
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate()
+    + ' ' + d.getHours() + ':' + mm;
+}
 
 function loadUserDataLocal() {
   try {
     userData.best = +(localStorage.getItem('oyatsu_best') || 0);
     userData.howtoSeen = localStorage.getItem('oyatsu_howto_seen') ? 1 : 0;
+    userData.ranking = normalizeRanking(JSON.parse(localStorage.getItem('oyatsu_ranking') || '[]'));
   } catch (e) {}
 }
 
@@ -2406,6 +2524,7 @@ function loadUserData(cb) {
           const parsed = JSON.parse((d && d.gamedata) || '{}');
           userData.best = +parsed.best || 0;
           userData.howtoSeen = parsed.howtoSeen ? 1 : 0;
+          userData.ranking = normalizeRanking(parsed.ranking);
         } catch (e) { /* 壊れたデータは初期値のまま */ }
         finish();
       } });
@@ -2429,6 +2548,7 @@ function saveUserData() {
   try {
     localStorage.setItem('oyatsu_best', String(userData.best));
     if (userData.howtoSeen) localStorage.setItem('oyatsu_howto_seen', '1');
+    localStorage.setItem('oyatsu_ranking', JSON.stringify(userData.ranking));
   } catch (e) {}
 }
 
@@ -2600,15 +2720,26 @@ function showResult() {
     t('r_detail', { n: maxStackCount, p: totalPerfect, g: totalGood, ok: totalOK });
   document.getElementById('result-points').textContent = `+${points} pt`;
 
-  // ハイスコア更新 → 保存（GB: game_save→game_end / 単体: localStorage）
+  // ハイスコア更新・ランキング挿入 → 保存（GB: game_save→game_end / 単体: localStorage）
   const isNewRecord = totalScore > 0 && totalScore > (userData.best || 0);
   if (isNewRecord) userData.best = totalScore;
+  lastRank = insertRanking(totalScore);
   saveUserData();
   if (gbOn() && typeof game_end === 'function') {
     try { game_end({ callback: function () {}, score: totalScore }); } catch (e) {}
   }
   const nr = document.getElementById('result-newrecord');
   if (nr) nr.style.display = isNewRecord ? '' : 'none';
+  // ランクイン表示（2位〜10位。1位はNEW RECORDが出るので重ねない）
+  const ri = document.getElementById('result-rankin');
+  if (ri) {
+    if (lastRank >= 2) {
+      ri.textContent = t('rank_in', { n: lastRank });
+      ri.style.display = '';
+    } else {
+      ri.style.display = 'none';
+    }
+  }
   updateTitleBest();
 
   // リザルトのポップアップに合わせて決定音を鳴らす
@@ -2744,6 +2875,36 @@ document.getElementById('pause-giveup').addEventListener('click', (e) => {
   if (!SFX_STAR.paused) { SFX_STAR.pause(); SFX_STAR.loop = false; SFX_STAR.currentTime = 0; }
   playGameoverSfx();
   showResult();
+});
+
+// ランキングダイアログ（ローカルTOP10）
+function openRankingDialog() {
+  const list = document.getElementById('ranking-list');
+  const medals = ['🥇', '🥈', '🥉'];
+  // 常にRANKING_MAX枠表示（記録がない枠は空スロット）。1〜3位はメダル色の下地
+  let html = '';
+  for (let i = 0; i < RANKING_MAX; i++) {
+    const e = userData.ranking[i];
+    const tier = i < 3 ? ' top' + (i + 1) : '';
+    html += '<div class="ranking-row' + tier + (e ? '' : ' empty') + '">'
+      + '<span class="rk">' + (medals[i] || (i + 1)) + '</span>'
+      + '<span class="sc">' + (e ? e.s : '---') + '</span>'
+      + '<span class="dt">' + (e ? formatRankTime(e.t) : '') + '</span></div>';
+  }
+  list.innerHTML = html;
+  const el = document.getElementById('ranking-screen');
+  el.style.display = 'flex';
+  el.setAttribute('aria-hidden', 'false');
+}
+document.getElementById('ranking-btn').addEventListener('click', function (e) {
+  e.preventDefault();
+  openRankingDialog();
+});
+document.getElementById('ranking-close-btn').addEventListener('click', function (e) {
+  e.preventDefault();
+  const el = document.getElementById('ranking-screen');
+  el.style.display = 'none';
+  el.setAttribute('aria-hidden', 'true');
 });
 
 // あそびかたダイアログ
