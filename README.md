@@ -38,6 +38,7 @@ Xcodeで実機ビルド or Product → Archive → App Store Connectへアップ
 ## ローカル起動
 
 ```bash
-python3 -m http.server 8081
-# → http://localhost:8081/oyatsu-time.html （?debug=1 でデバッグUI表示）
+python3 -m http.server 8090
+# → http://localhost:8090/oyatsu-time.html （?debug=1 でデバッグUI表示）
+# ※ 8081 は Claude デスクトップアプリのプレビュー機能が使うため避ける
 ```

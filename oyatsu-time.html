@@ -611,9 +611,9 @@
   <div id="hud" style="display:none;">
     <div class="hud-left-col">
       <div class="hud-box">
-        <div class="hud-label">スコア</div>
+        <div class="hud-label" id="hud-score-label">スコア</div>
         <div class="hud-value" id="score-display">0</div>
-        <div class="hud-sub">つんだかず <span id="count-display">0</span></div>
+        <div class="hud-sub"><span id="hud-count-label">つんだかず</span> <span id="count-display">0</span></div>
       </div>
     </div>
     <button type="button" id="pause-btn" aria-label="オプション"><span class="pause-icon"></span></button>
@@ -636,7 +636,7 @@
   </div>
   <div id="wobble-meter-wrap" class="wobble-meter-wrap" hidden aria-hidden="true">
     <div class="wobble-meter-track">
-      <span class="wobble-meter-title">きけん</span>
+      <span class="wobble-meter-title" id="wobble-meter-title">きけん</span>
       <div class="wobble-meter-groove">
         <div id="wobble-meter-fill" class="wobble-meter-fill"></div>
       </div>
@@ -658,8 +658,8 @@
   </div>
   <button id="sound-toggle-btn" aria-label="おんりょうオン/オフ"><span class="snd-icon"></span></button>
   <img id="title-logo" src="logo.png" alt="スイーツムツム">
-  <div class="flavor-text">✨ スイーツをたくさんつもう！ ✨</div>
-  <div id="title-best" class="title-best" style="display:none;">🏆 ベスト <span id="title-best-num">0</span></div>
+  <div class="flavor-text" id="flavor-text">✨ スイーツをたくさんつもう！ ✨</div>
+  <div id="title-best" class="title-best" style="display:none;"><span id="title-best-label">🏆 ベスト</span> <span id="title-best-num">0</span></div>
   <button class="btn-sub" id="howto-btn">あそびかた</button>
   <button class="btn" id="start-btn">はじめる</button>
 </div>
@@ -668,20 +668,20 @@
     <div class="title" id="howto-title" style="font-size:22px; margin-bottom:2px;">あそびかた</div>
     <div class="howto-divider" style="margin-bottom:22px;"></div>
     <div class="howto-rows">
-      <div class="howto-row"><img src="help_image_01.png" alt=""><span>スイーツをたくさんつもう！</span></div>
-      <div class="howto-row"><img src="help_image_02.png" alt=""><span>ほしはフィーバータイム<br>タップでガンガンつもう！<br>ズレもなおしてくれるよ！</span></div>
-      <div class="howto-row"><img src="help_image_03.png" alt=""><span>おじゃまハムスターは<br>スイーツをとっていくから<br>よけよう！</span></div>
+      <div class="howto-row"><img src="help_image_01.png" alt=""><span id="howto-text-1">スイーツをたくさんつもう！</span></div>
+      <div class="howto-row"><img src="help_image_02.png" alt=""><span id="howto-text-2">ほしはフィーバータイム<br>タップでガンガンつもう！<br>ズレもなおしてくれるよ！</span></div>
+      <div class="howto-row"><img src="help_image_03.png" alt=""><span id="howto-text-3">おじゃまハムスターは<br>スイーツをとっていくから<br>よけよう！</span></div>
     </div>
-    <div style="font-size:13px; color:var(--tsum-cyan); font-weight:700; margin-top:12px;">ヒント</div>
+    <div id="howto-hint-label" style="font-size:13px; color:var(--tsum-cyan); font-weight:700; margin-top:12px;">ヒント</div>
     <div class="howto-divider"></div>
-    <div class="howto-note">🍽️ おさらは←→にうごくよ<br>👆 タップでおちるスピードがアップ<br>🌡️ ズレにちゅういしてね</div>
+    <div class="howto-note" id="howto-note">🍽️ おさらは←→にうごくよ<br>👆 タップでおちるスピードがアップ<br>🌡️ ズレにちゅういしてね</div>
     <button class="btn" id="howto-close-btn">とじる</button>
   </div>
 </div>
 <div id="continue-screen" aria-hidden="true">
   <div class="result-dialog" role="dialog" aria-labelledby="continue-title">
     <div class="title" id="continue-title" style="font-size:24px;">つづける？</div>
-    <div class="continue-text">📺 こうこくを見ると<br>くずれるまえから<br>つづけられるよ！</div>
+    <div class="continue-text" id="continue-text">📺 こうこくを見ると<br>くずれるまえから<br>つづけられるよ！</div>
     <button class="btn" id="continue-yes">こうこくを見てつづける</button>
     <button class="btn-sub" id="continue-no">やめる</button>
   </div>
@@ -693,7 +693,7 @@
     <div style="width:60%; height:1px; background:rgba(205,150,105,0.3); margin:8px auto;"></div>
     <div id="result-newrecord" style="display:none;">✨ NEW RECORD! ✨</div>
     <div class="result-score-box">
-      <div style="font-size:12px; color:var(--tsum-cyan); font-weight:700;">ごうけいスコア</div>
+      <div id="result-total-label" style="font-size:12px; color:var(--tsum-cyan); font-weight:700;">ごうけいスコア</div>
       <div class="result-score" id="result-score">0</div>
     </div>
     <div class="result-detail" id="result-detail"></div>
@@ -723,6 +723,139 @@
       document.documentElement.classList.add('show-debug-ui');
     }
   } catch (e) { /* noop */ }
+})();
+
+// --- 多言語対応 (i18n) ---
+// 言語の決定: URL ?lang= → 保存済み設定 → 端末の言語（日本語以外は英語）
+// ※ 画像内の文字（ロゴ・ヘルプ画像）は別途言語別アセットで差し替える
+const I18N = {
+  ja: {
+    doc_title: 'スイーツムツム 🍩',
+    flavor: '✨ スイーツをたくさんつもう！ ✨',
+    best: '🏆 ベスト',
+    howto_btn: 'あそびかた',
+    start_btn: 'はじめる',
+    howto_title: 'あそびかた',
+    howto_1: 'スイーツをたくさんつもう！',
+    howto_2: 'ほしはフィーバータイム<br>タップでガンガンつもう！<br>ズレもなおしてくれるよ！',
+    howto_3: 'おじゃまハムスターは<br>スイーツをとっていくから<br>よけよう！',
+    hint_label: 'ヒント',
+    howto_note: '🍽️ おさらは←→にうごくよ<br>👆 タップでおちるスピードがアップ<br>🌡️ ズレにちゅういしてね',
+    close_btn: 'とじる',
+    continue_title: 'つづける？',
+    continue_text: '📺 こうこくを見ると<br>くずれるまえから<br>つづけられるよ！',
+    continue_yes: 'こうこくを見てつづける',
+    continue_no: 'やめる',
+    result_title: 'けっか',
+    total_label: 'ごうけいスコア',
+    new_record: '✨ NEW RECORD! ✨',
+    retry_btn: 'タイトルへ',
+    hud_score: 'スコア',
+    hud_count: 'つんだかず',
+    danger: 'きけん',
+    pause_title: 'オプション',
+    giveup_btn: 'あきらめる',
+    resume_btn: 'つづきをプレイ',
+    sound_aria: 'おんりょうオン/オフ',
+    pause_aria: 'オプション',
+    r_catch: 'キャッチ',
+    r_count: 'つんだかず (×5)',
+    r_height: 'たかさボーナス',
+    r_detail: 'さいだい{n}コつんだ！ (P:{p} G:{g} OK:{ok})',
+    mogu: 'もぐ',
+    yum: '…おいし♪',
+  },
+  en: {
+    doc_title: 'Sweets Tower 🍩',
+    flavor: '✨ Stack up sweet treats! ✨',
+    best: '🏆 Best',
+    howto_btn: 'How to Play',
+    start_btn: 'Start',
+    howto_title: 'How to Play',
+    howto_1: 'Stack as many sweets as you can!',
+    howto_2: 'Stars start FEVER TIME!<br>Tap fast and stack away —<br>it fixes your wobble too!',
+    howto_3: 'Watch out! The hamster<br>steals your sweets —<br>dodge him!',
+    hint_label: 'Hints',
+    howto_note: '🍽️ The plate moves left & right<br>👆 Tap to drop faster<br>🌡️ Watch the wobble!',
+    close_btn: 'Close',
+    continue_title: 'Continue?',
+    continue_text: '📺 Watch an ad to keep going<br>from right before<br>the crash!',
+    continue_yes: 'Watch Ad & Continue',
+    continue_no: 'No Thanks',
+    result_title: 'Results',
+    total_label: 'TOTAL SCORE',
+    new_record: '✨ NEW RECORD! ✨',
+    retry_btn: 'Back to Title',
+    hud_score: 'SCORE',
+    hud_count: 'Stacked',
+    danger: 'DANGER',
+    pause_title: 'Options',
+    giveup_btn: 'Give Up',
+    resume_btn: 'Keep Playing',
+    sound_aria: 'Sound on/off',
+    pause_aria: 'Options',
+    r_catch: 'Catch',
+    r_count: 'Stacked (×5)',
+    r_height: 'Height Bonus',
+    r_detail: 'Stacked {n} max! (P:{p} G:{g} OK:{ok})',
+    mogu: 'Nom',
+    yum: '...Yum!♪',
+  },
+};
+
+const LANG = (function detectLang() {
+  try {
+    const p = new URLSearchParams(location.search).get('lang');
+    if (p && I18N[p]) { localStorage.setItem('oyatsu_lang', p); return p; }
+    const saved = localStorage.getItem('oyatsu_lang');
+    if (saved && I18N[saved]) return saved;
+  } catch (e) { /* noop */ }
+  return (navigator.language || 'ja').toLowerCase().startsWith('ja') ? 'ja' : 'en';
+})();
+
+/** 翻訳キー→文言。{n} 等のプレースホルダは params で置換 */
+function t(key, params) {
+  let s = (I18N[LANG] && I18N[LANG][key]) != null ? I18N[LANG][key]
+    : (I18N.ja[key] != null ? I18N.ja[key] : key);
+  if (params) for (const k in params) s = s.replace('{' + k + '}', params[k]);
+  return s;
+}
+
+// 静的DOMへ一括適用（スクリプトは body 末尾なのでDOMは構築済み）
+(function applyI18nToDom() {
+  document.documentElement.lang = LANG;
+  document.title = t('doc_title');
+  const text = {
+    'flavor-text': 'flavor', 'title-best-label': 'best',
+    'howto-btn': 'howto_btn', 'start-btn': 'start_btn',
+    'howto-title': 'howto_title', 'howto-hint-label': 'hint_label',
+    'howto-close-btn': 'close_btn',
+    'continue-title': 'continue_title', 'continue-yes': 'continue_yes', 'continue-no': 'continue_no',
+    'result-title': 'result_title', 'result-total-label': 'total_label',
+    'result-newrecord': 'new_record', 'retry-btn': 'retry_btn',
+    'hud-score-label': 'hud_score', 'hud-count-label': 'hud_count',
+    'wobble-meter-title': 'danger',
+    'pause-modal-title': 'pause_title', 'pause-howto': 'howto_btn',
+    'pause-giveup': 'giveup_btn', 'pause-resume': 'resume_btn',
+  };
+  for (const id in text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(text[id]);
+  }
+  const html = {
+    'howto-text-1': 'howto_1', 'howto-text-2': 'howto_2', 'howto-text-3': 'howto_3',
+    'howto-note': 'howto_note', 'continue-text': 'continue_text',
+  };
+  for (const id in html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = t(html[id]);
+  }
+  const soundBtn = document.getElementById('sound-toggle-btn');
+  if (soundBtn) soundBtn.setAttribute('aria-label', t('sound_aria'));
+  const pauseSnd = document.getElementById('pause-sound-toggle');
+  if (pauseSnd) pauseSnd.setAttribute('aria-label', t('sound_aria'));
+  const pauseBtn = document.getElementById('pause-btn');
+  if (pauseBtn) pauseBtn.setAttribute('aria-label', t('pause_aria'));
 })();
 
 const canvas = document.getElementById('game');
@@ -2459,12 +2592,12 @@ function showResult() {
   const points = Math.floor(totalScore / 10);
 
   document.getElementById('result-breakdown').innerHTML =
-    `<img src="item_01.png" width="18" height="18" style="vertical-align:middle"> キャッチ: <b style="color:var(--accent)">${catchScore}</b><br>` +
-    `📦 つんだかず (×5): <b style="color:var(--accent)">${countBonus}</b><br>` +
-    `📏 たかさボーナス: <b style="color:var(--accent)">${heightBonus}</b>`;
+    `<img src="item_01.png" width="18" height="18" style="vertical-align:middle"> ${t('r_catch')}: <b style="color:var(--accent)">${catchScore}</b><br>` +
+    `📦 ${t('r_count')}: <b style="color:var(--accent)">${countBonus}</b><br>` +
+    `📏 ${t('r_height')}: <b style="color:var(--accent)">${heightBonus}</b>`;
   document.getElementById('result-score').textContent = totalScore;
   document.getElementById('result-detail').textContent =
-    `さいだい${maxStackCount}コつんだ！ (P:${totalPerfect} G:${totalGood} OK:${totalOK})`;
+    t('r_detail', { n: maxStackCount, p: totalPerfect, g: totalGood, ok: totalOK });
   document.getElementById('result-points').textContent = `+${points} pt`;
 
   // ハイスコア更新 → 保存（GB: game_save→game_end / 単体: localStorage）
@@ -3341,9 +3474,9 @@ function update(dt) {
             mogumoguFx = { worldX: falling.x, worldY: sTop, t: 0, duration: MOGUMOGU_DURATION };
             const mogX = falling.x;
             const mogY = falling.screenY;
-            setTimeout(() => { addFloatingText(mogX, mogY - 40, 'もぐ', '#8B6F47'); }, 0);
-            setTimeout(() => { addFloatingText(mogX, mogY - 74, 'もぐ', '#A0785C'); }, 160);
-            setTimeout(() => { addFloatingText(mogX, mogY - 108, '…おいし♪', '#C48B5C'); }, 320);
+            setTimeout(() => { addFloatingText(mogX, mogY - 40, t('mogu'), '#8B6F47'); }, 0);
+            setTimeout(() => { addFloatingText(mogX, mogY - 74, t('mogu'), '#A0785C'); }, 160);
+            setTimeout(() => { addFloatingText(mogX, mogY - 108, t('yum'), '#C48B5C'); }, 320);
             canvas.classList.add('shake');
             setTimeout(() => canvas.classList.remove('shake'), 200);
             comboCount = 0;
@@ -3456,9 +3589,9 @@ function update(dt) {
           };
           const mogX = falling.x;
           const mogY = landingScreenY;
-          setTimeout(() => { addFloatingText(mogX, mogY - 40, 'もぐ', '#8B6F47'); }, 0);
-          setTimeout(() => { addFloatingText(mogX, mogY - 74, 'もぐ', '#A0785C'); }, 160);
-          setTimeout(() => { addFloatingText(mogX, mogY - 108, '…おいし♪', '#C48B5C'); }, 320);
+          setTimeout(() => { addFloatingText(mogX, mogY - 40, t('mogu'), '#8B6F47'); }, 0);
+          setTimeout(() => { addFloatingText(mogX, mogY - 74, t('mogu'), '#A0785C'); }, 160);
+          setTimeout(() => { addFloatingText(mogX, mogY - 108, t('yum'), '#C48B5C'); }, 320);
           canvas.classList.add('shake');
           setTimeout(() => canvas.classList.remove('shake'), 200);
         } else {
