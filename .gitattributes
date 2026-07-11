@@ -1,0 +1,22 @@
+# Windows/Mac間で改行コードの差分ノイズが出ないよう統一する
+* text=auto
+
+# コード・テキストは LF で統一
+*.html text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.sh   text eol=lf
+*.swift text eol=lf
+*.storyboard text eol=lf
+*.plist text eol=lf
+
+# PowerShell は Windows 標準の CRLF
+*.ps1  text eol=crlf
+
+# バイナリ
+*.png binary
+*.jpg binary
+*.mp3 binary
+*.m4a binary
+*.zip binary
