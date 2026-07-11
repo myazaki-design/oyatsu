@@ -1,0 +1,13 @@
+.DS_Store
+
+# Claudeのローカル設定（PC固有）
+.claude/settings.local.json
+
+# iOSアプリ（Capacitor）: 生成物・依存はgitに入れない
+app-ios/node_modules/
+app-ios/www/
+app-ios/ios/App/App/public/
+app-ios/ios/App/App/capacitor.config.json
+app-ios/ios/DerivedData/
+app-ios/ios/App/App.xcodeproj/xcuserdata/
+app-ios/ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/

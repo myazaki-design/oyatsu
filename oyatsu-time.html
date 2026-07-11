@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
 <title>スイーツムツム 🍩</title>
 <!-- かんたんゲームボックス(GMOメディア) 連携API。単体動作時は読み込めなくても問題ない（利用側はすべて存在ガード済み） -->
 <script defer src="https://img.kantangame.com/game/app/js/gamebox.iframe.js?v=1.5"></script>
@@ -42,10 +46,19 @@
       radial-gradient(80% 60% at 70% 25%, rgba(255,224,236,0.45) 0%, rgba(255,224,236,0) 55%),
       linear-gradient(165deg, #ffffff 0%, #f6f2fb 45%, #efe7f7 100%);
     overflow: hidden;
+    /* iOSの慣性バウンス/引っ張り更新を防止（Capacitor対策） */
+    overscroll-behavior: none;
+    position: fixed;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
     -webkit-touch-callout: none;
     height: 100dvh; width: 100vw;
+    /* セーフエリアの値をJSからも読めるようCSS変数として公開 */
+    --sat: env(safe-area-inset-top);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+    --sar: env(safe-area-inset-right);
   }
   canvas { display: block; margin: 0 auto; touch-action: none; }
   /* PC（マウス環境）はスマホ風の縦長固定フレームとして枠飾りを付ける */
@@ -788,6 +801,10 @@ function closeDebugLogModal() {
 function resize() {
   // 高DPR端末（iPhone等のDPR3）では描画ピクセル数が跳ね上がるため2に制限（見た目の差はほぼない）
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  // セーフエリア（ノッチ・ホームインジケーター）を JS から読む（iOS/Capacitor 対応）
+  const cs = getComputedStyle(document.body);
+  const safeBottom = parseFloat(cs.getPropertyValue('--sab')) || 0;
+  const safeTop = parseFloat(cs.getPropertyValue('--sat')) || 0;
   // スマホ（タッチ主体の端末）は画面いっぱい、PC はスマホ風の縦長固定フレーム（最大 420×910）
   const isTouchDevice = (typeof window.matchMedia === 'function')
     && window.matchMedia('(pointer: coarse)').matches;
@@ -819,7 +836,8 @@ function resize() {
   SWAY_MAX_V = 900 * UNIT;
   PLATE_W = 100 * UNIT;
   PLATE_H = 18 * UNIT;
-  PLATE_Y = H;
+  // ホームインジケーター（下部黒バー）にお皿が隠れないよう、下部セーフエリア分だけ上げる
+  PLATE_Y = H - safeBottom;
   // 論理着地・カメラは PLATE_Y のまま。お皿の楕円だけ下にずらす量（UNIT 倍＝画面幅基準）
   PLATE_DRAW_OFFSET_Y = PLATE_DRAW_DOWN_UNIT * UNIT;
 }
