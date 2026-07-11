@@ -565,6 +565,10 @@
     overflow: hidden;
     box-shadow: inset 0 1px 2px rgba(91,58,38,0.2);
   }
+  /* 崩壊時: ゲージ全体を赤にして「限界を振り切った」ことを見せる */
+  .wobble-meter-wrap.is-collapse .wobble-meter-groove {
+    background: linear-gradient(90deg, #ff6b5e, #e53935);
+  }
   /* フィルは「まだ溜まっていない右側」を隠すカバー（右端基準で縮む） */
   .wobble-meter-fill {
     width: 100%;
@@ -3815,6 +3819,8 @@ function drawCollidersDebug() {
 const _wm = {
   wrap: null, fill: null,
   prevHidden: null, prevTQ: -1, prevTier: -1,
+  lastRatio: 0,       // 直近表示していた割合（崩壊アニメの開始値になる）
+  collapseAnimT: -1,  // 崩壊アニメ進行 0..1（-1=未開始）
 };
 function updateWobbleMeter() {
   if (!_wm.wrap) {
@@ -3824,7 +3830,8 @@ function updateWobbleMeter() {
   const { wrap, fill } = _wm;
   if (!wrap || !fill) return;
 
-  const shouldHide = state !== 'falling' || paused;
+  // 崩壊中もメーターは残す（「限界を振り切って崩れた」ことを見せる）
+  const shouldHide = (state !== 'falling' && state !== 'collapsed') || paused;
   if (shouldHide !== _wm.prevHidden) {
     _wm.prevHidden = shouldHide;
     wrap.hidden = shouldHide;
@@ -3832,8 +3839,32 @@ function updateWobbleMeter() {
   }
   if (shouldHide) return;
 
+  if (state === 'collapsed') {
+    // ホワイトアウト（崩壊フラッシュ）中は直前の値のまま静止
+    if (collapseFlash > 0.02) return;
+    // ホワイトアウト後: 0.1秒かけて赤くMAXまで伸びる
+    if (_wm.collapseAnimT < 0) {
+      _wm.collapseAnimT = 0;
+      wrap.classList.add('is-collapse');
+    }
+    if (_wm.collapseAnimT < 1) {
+      _wm.collapseAnimT = Math.min(1, _wm.collapseAnimT + lastFrameDt / 0.1);
+      const t = _wm.lastRatio + (1 - _wm.lastRatio) * _wm.collapseAnimT;
+      fill.style.transform = `scaleX(${1 - t})`;
+      _wm.prevTQ = -1; // 次のプレイで必ず再描画されるように
+    }
+    return;
+  }
+
+  // 通常プレイ: 崩壊アニメの状態をリセット
+  if (_wm.collapseAnimT !== -1) {
+    _wm.collapseAnimT = -1;
+    wrap.classList.remove('is-collapse');
+  }
+
   const m = getWobbleDangerMetrics();
   const t = Math.min(m.ratio, 1);
+  _wm.lastRatio = t;
   const tQ = Math.round(t * 50); // 2% 刻みで変化時のみ DOM 更新
   if (tQ === _wm.prevTQ) return;
   _wm.prevTQ = tQ;
