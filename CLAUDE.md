@@ -51,6 +51,11 @@ python3 -m http.server 8090        # Windows: python -m http.server 8090
 - 運用（D1コンソールでSQL実行）: シード削除 `DELETE FROM scores WHERE seed=1;` / 全送信削除 `DELETE FROM scores WHERE seed=0;` / 不正値削除 `DELETE FROM scores WHERE score>20000;`
 - リリース時のシード10件（コールドスタート対策）は `schema.sql` に含む。倒せるスコア帯（最高6210）に設定
 
+## スキル（.claude/skills/）
+
+- `/commit-push`: sync→add→日本語メッセージでコミット→プッシュの定型フロー
+- `/pull`: pull→取り込み要約→ゲーム変更があればiOS同期まで自動実行
+
 ## コミット規約
 
 - メッセージは日本語で「何を・なぜ」。末尾に `Co-Authored-By: Claude ...` を付与
