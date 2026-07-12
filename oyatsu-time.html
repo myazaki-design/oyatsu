@@ -171,6 +171,19 @@
   /* 一時停止メニュー内のボタンサイズ（見た目は .btn / .btn-sub 共通デザイン） */
   .btn-pause-option { width: 82%; margin-bottom: 12px; padding: 13px 16px; font-size: 16px; }
   .pause-modal-dialog .btn { width: 100%; margin-top: 8px; padding: 14px 16px; font-size: 18px; }
+  /* 横長ピンクボタン（つづきをプレイ）は、丸いツヤ＋上部の白insetが「白い横線」に見えるので、
+     上辺に沿ったフル幅の柔らかいシートに差し替える */
+  .pause-modal-dialog .btn::before {
+    top: 0; left: 0; right: 0; height: 46%;
+    border-radius: 50px 50px 40% 40% / 50px 50px 100% 100%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0));
+  }
+  .pause-modal-dialog .btn {
+    box-shadow: 0 6px 0 var(--tsum-pink-shadow), 0 12px 24px rgba(205,150,105,0.35);
+  }
+  .pause-modal-dialog .btn:active {
+    box-shadow: 0 2px 0 var(--tsum-pink-shadow), 0 4px 10px rgba(0,0,0,0.3);
+  }
   #start-screen {
     position: absolute;
     top: var(--game-top, 0px); bottom: var(--game-top, 0px);
@@ -277,11 +290,18 @@
     flex: 1 1 auto; min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-right: 4px;
+    /* スクロールバーを少し右（フレームの余白側）へ寄せる。中身は右パディングで離す */
+    margin-right: -8px;
+    padding-right: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(240,100,142,0.55) rgba(240,100,142,0.12);
   }
-  .ranking-list::-webkit-scrollbar { width: 5px; }
-  .ranking-list::-webkit-scrollbar-thumb { background: rgba(205,150,105,0.4); border-radius: 999px; }
-  .ranking-list::-webkit-scrollbar-track { background: rgba(205,150,105,0.12); border-radius: 999px; }
+  .ranking-list::-webkit-scrollbar { width: 6px; }
+  .ranking-list::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--tsum-pink-light), var(--tsum-pink));
+    border-radius: 999px;
+  }
+  .ranking-list::-webkit-scrollbar-track { background: rgba(240,100,142,0.12); border-radius: 999px; }
   .ranking-row { flex-shrink: 0; }
   .ranking-row {
     display: flex; align-items: center; gap: 10px;
@@ -3016,7 +3036,7 @@ function fetchWorldTop() {
     }
     return Promise.resolve(null);
   }
-  return fetch(WORLD_API_BASE + '/top?limit=30').then((r) => {
+  return fetch(WORLD_API_BASE + '/top?limit=10').then((r) => {
     if (!r.ok) throw new Error('http ' + r.status);
     return r.json();
   });
@@ -3098,7 +3118,7 @@ function renderWorldRanking(list) {
     if (rankingTab !== 'world') return; // 表示中にタブが変わっていたら捨てる
     if (rows === null) { list.innerHTML = '<div class="ranking-msg">' + t('world_preparing') + '</div>'; return; }
     if (!rows.length) { list.innerHTML = '<div class="ranking-msg">' + t('world_empty') + '</div>'; return; }
-    list.innerHTML = rows.map(function (e, i) {
+    list.innerHTML = rows.slice(0, 10).map(function (e, i) {
       const tier = i < 3 ? ' top' + (i + 1) : '';
       // 自分の行（名前一致 or モックの合成エントリ）は色で区別
       const me = (e._me || (userData.nm && e.n === userData.nm)) ? ' me' : '';
