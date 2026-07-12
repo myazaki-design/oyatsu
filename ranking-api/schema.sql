@@ -15,14 +15,15 @@ CREATE INDEX IF NOT EXISTS idx_scores_score ON scores(score DESC);
 CREATE INDEX IF NOT EXISTS idx_scores_ip_time ON scores(ip, created_at);
 
 -- 初期シード（コールドスタート対策。倒せるスコア帯に設定）
+-- 名前は生成パターン（NAME_WORDS の 形容詞+スイーツ+番号1-99）に合致させること
 INSERT INTO scores (name, score, seed, ip, created_at) VALUES
-  ('Emma',           6210, 1, '', strftime('%s','now')),
-  ('ぴょんきち',      5980, 1, '', strftime('%s','now')),
-  ('Liam',           5540, 1, '', strftime('%s','now')),
-  ('はむたろう',      5100, 1, '', strftime('%s','now')),
-  ('Sophie',         4620, 1, '', strftime('%s','now')),
-  ('ケーキだいすき',  4180, 1, '', strftime('%s','now')),
-  ('Lucas',          3750, 1, '', strftime('%s','now')),
-  ('あんこ',          3020, 1, '', strftime('%s','now')),
-  ('Olivia',         2260, 1, '', strftime('%s','now')),
-  ('ぷりん',          1480, 1, '', strftime('%s','now'));
+  ('SparklyDonut42',   6210, 1, '', strftime('%s','now')),
+  ('ぴんくマカロン7',   5980, 1, '', strftime('%s','now')),
+  ('HappyCookie9',     5540, 1, '', strftime('%s','now')),
+  ('もちもちプリン3',   5100, 1, '', strftime('%s','now')),
+  ('BerryMuffin23',    4620, 1, '', strftime('%s','now')),
+  ('きらきらケーキ55',  4180, 1, '', strftime('%s','now')),
+  ('FluffyWaffle8',    3750, 1, '', strftime('%s','now')),
+  ('いちごタルト21',    3020, 1, '', strftime('%s','now')),
+  ('CozyPudding5',     2260, 1, '', strftime('%s','now')),
+  ('ぷるぷるゼリー4',   1480, 1, '', strftime('%s','now'));

@@ -14,7 +14,7 @@ function sig(s) {
   return h.toString(36);
 }
 
-// 名前のサニタイズ: 制御文字を除去して trim、最大10文字
+// 名前のサニタイズ: 制御文字を除去して trim、最大16文字
 function cleanName(v) {
   let out = '';
   const src = String(v || '');
@@ -22,7 +22,40 @@ function cleanName(v) {
     const c = src.charCodeAt(i);
     if (c >= 32 && c !== 127) out += src[i];
   }
-  return out.trim().slice(0, 10);
+  return out.trim().slice(0, 16);
+}
+
+// 名前は自由入力ではなく生成名のみ受理（App Store審査のUGC対策・不適切名の混入防止）。
+// ※ oyatsu-time.html の NAME_WORDS と必ず同一に保つこと（クライアントの生成元）
+const NAME_WORDS = {
+  ja: {
+    adj: ['ぴんく', 'きらきら', 'ふわふわ', 'もちもち', 'にこにこ', 'まんまる',
+      'つやつや', 'ぷるぷる', 'さくさく', 'ほんわか', 'いちご', 'ちび'],
+    sweet: ['ドーナツ', 'マカロン', 'ケーキ', 'アイス', 'プリン', 'クッキー',
+      'タルト', 'ワッフル', 'クレープ', 'マフィン', 'グミ', 'ゼリー'],
+  },
+  en: {
+    adj: ['Pink', 'Sparkly', 'Fluffy', 'Chewy', 'Happy', 'Round',
+      'Berry', 'Shiny', 'Crispy', 'Cozy', 'Tiny', 'Sweet'],
+    sweet: ['Donut', 'Macaron', 'Cake', 'Pudding', 'Cookie', 'Candy',
+      'Waffle', 'Tart', 'Crepe', 'Muffin', 'Gummy', 'Jelly'],
+  },
+};
+
+/** 「形容詞＋スイーツ＋番号(1-99)」の生成パターンに合致するか（ja/en両対応） */
+function isValidGeneratedName(nm) {
+  if (!nm) return false;
+  for (const lang in NAME_WORDS) {
+    const w = NAME_WORDS[lang];
+    for (const a of w.adj) {
+      if (!nm.startsWith(a)) continue;
+      for (const s of w.sweet) {
+        if (!nm.startsWith(a + s)) continue;
+        if (/^[1-9][0-9]?$/.test(nm.slice(a.length + s.length))) return true;
+      }
+    }
+  }
+  return false;
 }
 
 const CORS = {
@@ -70,7 +103,7 @@ export default {
         const score = Math.floor(+body.s || 0);
         const g = String(body.g || '');
 
-        if (!name) return json({ error: 'bad name' }, 400);
+        if (!name || !isValidGeneratedName(name)) return json({ error: 'bad name' }, 400);
         if (!(score > 0) || score > SCORE_MAX) return json({ error: 'bad score' }, 400);
         if (g !== sig(name + ':' + score)) return json({ error: 'bad sig' }, 400);
 

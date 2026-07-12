@@ -40,7 +40,10 @@ python3 -m http.server 8090        # Windows: python -m http.server 8090
 - **じぶんのきろく（ローカルTOP10）**: 全環境で有効。`userData`（best/ranking/nm/howtoSeen）に保持。GMO上は `game_save`、単体は localStorage（`oyatsu_best`/`oyatsu_ranking`/`oyatsu_name`/`oyatsu_howto_seen`）
 - **せかいランキング（全世界）**: **iOSアプリ限定**（`isIosApp()` = Capacitor判定）。GMOでは非表示（ポータル側ランキングが役割）、Web単体も非表示。開発確認は `?debug=1` で実API接続、`WORLD_API_BASE` 空ならモック表示
 - タイトルの「ランキング」ボタン → ダイアログ内タブ（じぶん/せかい）。せかいは iOS/debug 時のみタブ表示
-- リザルトで自動スコア送信（iOS時のみ）。初回は「なまえ」入力ダイアログ → `userData.nm` に保存
+- リザルトで自動スコア送信（iOS時のみ）。初回は「なまえ」選択ダイアログ → `userData.nm` に保存
+- **なまえは自由入力禁止**（App Store審査のUGC要件対策）。`NAME_WORDS`（形容詞×スイーツ×番号1-99）から
+  生成した候補を選ぶ方式。クライアントとworkerの `NAME_WORDS` は**必ず同一に保つ**
+  （worker側で生成パターン外の名前をPOST拒否。旧自由入力名はロード時に無効化され選び直し）
 
 ## せかいランキングのバックエンド（Cloudflare Workers + D1）
 

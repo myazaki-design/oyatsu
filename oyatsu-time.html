@@ -228,20 +228,22 @@
   #result-screen, #howto-screen, #continue-screen, #ranking-screen, #name-screen, .pause-modal.is-open {
     animation: overlayFadeIn 0.1s ease-out both;
   }
-  /* 名前入力（せかいランキング用）。リザルトの上に重ねる */
+  /* なまえ選択（せかいランキング用）。自由入力ではなく生成候補から選ぶ
+     （App Store審査のUGC要件と、子どもの本名入力事故を避けるため） */
   #name-screen { z-index: 48; }
   #name-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: center; }
   .name-text { font-size: 14px; color: var(--ink); font-weight: 700; line-height: 1.9; margin: 8px 0 14px; }
-  #name-input {
-    width: 82%; padding: 10px 12px; margin-bottom: 18px;
+  .name-preview {
+    width: 88%; padding: 12px 10px; margin-bottom: 10px;
     border-radius: 14px; border: 1.5px solid rgba(205,150,105,0.45);
     background: rgba(255,255,255,0.85);
-    font-family: inherit; font-size: 16px; font-weight: 700; color: var(--ink);
-    text-align: center; outline: none;
+    font-size: 19px; font-weight: 900; color: var(--accent);
+    text-align: center;
   }
-  #name-input:focus { border-color: var(--accent); }
+  #name-shuffle { margin: 0 0 16px; padding: 9px 26px; font-size: 13px; }
   #name-screen .btn { padding: 12px 40px; font-size: 17px; flex-shrink: 0; }
   #name-screen .btn-sub { margin: 14px 0 0; padding: 9px 30px; font-size: 13px; }
+  #name-screen #name-shuffle { margin: 0 0 16px; }
   /* コンティニュー: 中身が少ないのでフレーム比率を保って中央寄せ */
   #continue-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: center; }
   .continue-text {
@@ -808,8 +810,9 @@
 <div id="name-screen" aria-hidden="true">
   <div class="result-dialog" role="dialog" aria-labelledby="name-title">
     <div class="title" id="name-title" style="font-size:22px;">なまえをきめよう</div>
-    <div class="name-text" id="name-text">せかいランキングにのせる<br>なまえを入れてね</div>
-    <input id="name-input" maxlength="10" autocomplete="off">
+    <div class="name-text" id="name-text">せかいランキングにのせる<br>なまえをえらんでね</div>
+    <div class="name-preview" id="name-preview"></div>
+    <button class="btn-sub" id="name-shuffle">べつのなまえにする</button>
     <button class="btn" id="name-ok">けってい</button>
     <button class="btn-sub" id="name-skip">あとで</button>
   </div>
@@ -929,7 +932,8 @@ const I18N = {
     world_empty: 'まだきろくがないよ',
     world_preparing: 'じゅんびちゅう',
     name_title: 'なまえをきめよう',
-    name_text: 'せかいランキングにのせる<br>なまえを入れてね',
+    name_text: 'せかいランキングにのせる<br>なまえをえらんでね',
+    name_shuffle: 'べつのなまえにする',
     name_ok: 'けってい',
     name_later: 'あとで',
   },
@@ -981,7 +985,8 @@ const I18N = {
     world_empty: 'No records yet',
     world_preparing: 'Coming soon',
     name_title: 'Pick a Name',
-    name_text: 'Enter a name for<br>the world ranking',
+    name_text: 'Pick your name for<br>the world ranking',
+    name_shuffle: 'Try Another',
     name_ok: 'OK',
     name_later: 'Later',
   },
@@ -1025,6 +1030,7 @@ function t(key, params) {
     'ranking-close-btn': 'close_btn',
     'ranking-tab-local': 'rank_tab_local', 'ranking-tab-world': 'rank_tab_world',
     'name-title': 'name_title', 'name-ok': 'name_ok', 'name-skip': 'name_later',
+    'name-shuffle': 'name_shuffle',
   };
   for (const id in text) {
     const el = document.getElementById(id);
@@ -2625,13 +2631,19 @@ function loadUserDataLocal() {
     userData.best = +(localStorage.getItem('oyatsu_best') || 0);
     userData.howtoSeen = localStorage.getItem('oyatsu_howto_seen') ? 1 : 0;
     userData.ranking = normalizeRanking(JSON.parse(localStorage.getItem('oyatsu_ranking') || '[]'));
-    userData.nm = String(localStorage.getItem('oyatsu_name') || '').slice(0, 10);
+    userData.nm = String(localStorage.getItem('oyatsu_name') || '').slice(0, 16);
   } catch (e) {}
 }
 
 function loadUserData(cb) {
   let done = false;
-  const finish = function () { if (!done) { done = true; cb(); } };
+  const finish = function () {
+    if (done) return;
+    done = true;
+    // 旧仕様（自由入力）の名前は無効化し、次回送信時に生成名を選び直させる
+    if (userData.nm && !isValidGeneratedName(userData.nm)) userData.nm = '';
+    cb();
+  };
   if (gbOn() && typeof game_get_data === 'function') {
     try {
       game_get_data({ callback: function (d) {
@@ -2640,7 +2652,7 @@ function loadUserData(cb) {
           userData.best = +parsed.best || 0;
           userData.howtoSeen = parsed.howtoSeen ? 1 : 0;
           userData.ranking = normalizeRanking(parsed.ranking);
-          userData.nm = String(parsed.nm || '').slice(0, 10);
+          userData.nm = String(parsed.nm || '').slice(0, 16);
         } catch (e) { /* 壊れたデータは初期値のまま */ }
         finish();
       } });
@@ -2998,6 +3010,50 @@ document.getElementById('pause-giveup').addEventListener('click', (e) => {
 // --- せかいランキング（自前API。iOSアプリ(Capacitor)でのみ有効） ---
 // APIのURL。バックエンドのデプロイ手順は ranking-api/README.md を参照。
 // 未設定の間は「じゅんびちゅう」表示（デバッグUI表示中はモックデータでUI確認できる）
+// --- なまえ生成（自由入力なし） ---
+// App Store審査のUGC要件（通報/ブロック/モデレーション義務）を回避し、
+// 子どもの本名入力事故も防ぐため、名前は安全な単語の組み合わせから生成する。
+// ※ ranking-api/worker.js の NAME_WORDS と必ず同一に保つこと（サーバー側でも検証）
+const NAME_WORDS = {
+  ja: {
+    adj: ['ぴんく', 'きらきら', 'ふわふわ', 'もちもち', 'にこにこ', 'まんまる',
+      'つやつや', 'ぷるぷる', 'さくさく', 'ほんわか', 'いちご', 'ちび'],
+    sweet: ['ドーナツ', 'マカロン', 'ケーキ', 'アイス', 'プリン', 'クッキー',
+      'タルト', 'ワッフル', 'クレープ', 'マフィン', 'グミ', 'ゼリー'],
+  },
+  en: {
+    adj: ['Pink', 'Sparkly', 'Fluffy', 'Chewy', 'Happy', 'Round',
+      'Berry', 'Shiny', 'Crispy', 'Cozy', 'Tiny', 'Sweet'],
+    sweet: ['Donut', 'Macaron', 'Cake', 'Pudding', 'Cookie', 'Candy',
+      'Waffle', 'Tart', 'Crepe', 'Muffin', 'Gummy', 'Jelly'],
+  },
+};
+
+/** 表示言語の単語で「形容詞＋スイーツ＋番号(1-99)」の名前を生成 */
+function generateRandomName() {
+  const w = NAME_WORDS[LANG] || NAME_WORDS.ja;
+  const a = w.adj[(Math.random() * w.adj.length) | 0];
+  const s = w.sweet[(Math.random() * w.sweet.length) | 0];
+  const num = 1 + ((Math.random() * 99) | 0);
+  return a + s + num;
+}
+
+/** 生成パターンに合致するか（ja/en どちらの言語で作られた名前も有効） */
+function isValidGeneratedName(nm) {
+  if (!nm) return false;
+  for (const lang in NAME_WORDS) {
+    const w = NAME_WORDS[lang];
+    for (const a of w.adj) {
+      if (!nm.startsWith(a)) continue;
+      for (const s of w.sweet) {
+        if (!nm.startsWith(a + s)) continue;
+        if (/^[1-9][0-9]?$/.test(nm.slice(a.length + s.length))) return true;
+      }
+    }
+  }
+  return false;
+}
+
 const WORLD_API_BASE = 'https://oyatsu-ranking.yazakiiii.workers.dev';
 function isIosApp() {
   return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
@@ -3064,9 +3120,11 @@ function postWorldScore(score) {
   } catch (e) {}
 }
 
+let nameCandidate = ''; // ダイアログに表示中の生成名
 function showNameDialog() {
   const el = document.getElementById('name-screen');
-  document.getElementById('name-input').value = userData.nm || '';
+  nameCandidate = isValidGeneratedName(userData.nm) ? userData.nm : generateRandomName();
+  document.getElementById('name-preview').textContent = nameCandidate;
   el.style.display = 'flex';
   el.setAttribute('aria-hidden', 'false');
 }
@@ -3075,11 +3133,15 @@ function hideNameDialog() {
   el.style.display = 'none';
   el.setAttribute('aria-hidden', 'true');
 }
+document.getElementById('name-shuffle').addEventListener('click', function (e) {
+  e.preventDefault();
+  nameCandidate = generateRandomName();
+  document.getElementById('name-preview').textContent = nameCandidate;
+});
 document.getElementById('name-ok').addEventListener('click', function (e) {
   e.preventDefault();
-  const v = document.getElementById('name-input').value.trim().slice(0, 10);
-  if (!v) return; // 空なら閉じない
-  userData.nm = v;
+  if (!nameCandidate) return;
+  userData.nm = nameCandidate;
   if (!gbOn()) saveUserData();
   hideNameDialog();
   if (pendingWorldScore > 0) { postWorldScore(pendingWorldScore); pendingWorldScore = 0; }
