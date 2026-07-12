@@ -266,6 +266,9 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .ranking-row.world .sc { flex: 0 0 auto; text-align: right; }
+  /* せかいランキング内の自分の行 */
+  .ranking-row.me { border-color: rgba(240,100,142,0.55); background: rgba(240,100,142,0.10); }
+  .ranking-row.me .nm { color: var(--accent); }
   .ranking-msg { font-size: 13px; color: var(--ink-soft); margin: 24px 0; text-align: center; }
   .ranking-list {
     width: 100%; display: flex; flex-direction: column; gap: 7px;
@@ -573,6 +576,14 @@
   #debug-sweet-center-btn.on {
     background: rgba(255, 235, 210, 0.96); border-color: rgba(200, 120, 60, 0.5); color: #8B4513;
   }
+  #debug-reset-btn {
+    position: fixed; right: calc(var(--game-left, 0px) + max(8px, env(safe-area-inset-right)));
+    bottom: calc(var(--game-top, 0px) + max(8px, env(safe-area-inset-bottom)) + 210px);
+    z-index: 30; pointer-events: auto; font-family: inherit; font-size: 11px; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--glass-line);
+    background: linear-gradient(150deg, rgba(255,235,232,0.9), rgba(255,255,255,0.55)); backdrop-filter: blur(12px) saturate(1.4); -webkit-backdrop-filter: blur(12px) saturate(1.4); color: #c0392b; cursor: pointer;
+    box-shadow: 0 3px 12px rgba(205,150,105,0.22);
+  }
   #debug-ufo-btn {
     position: fixed; right: calc(var(--game-left, 0px) + max(8px, env(safe-area-inset-right)));
     bottom: calc(var(--game-top, 0px) + max(8px, env(safe-area-inset-bottom)) + 168px);
@@ -586,14 +597,16 @@
   #debug-log-btn,
   #debug-hamster-btn,
   #debug-sweet-center-btn,
-  #debug-ufo-btn {
+  #debug-ufo-btn,
+  #debug-reset-btn {
     display: none;
   }
   html.show-debug-ui #debug-colliders-btn,
   html.show-debug-ui #debug-log-btn,
   html.show-debug-ui #debug-hamster-btn,
   html.show-debug-ui #debug-sweet-center-btn,
-  html.show-debug-ui #debug-ufo-btn {
+  html.show-debug-ui #debug-ufo-btn,
+  html.show-debug-ui #debug-reset-btn {
     display: block !important;
   }
   .debug-log-modal {
@@ -701,6 +714,7 @@
 <button type="button" id="debug-log-btn">ログ</button>
 <button type="button" id="debug-hamster-btn" aria-pressed="true">ハムスター ON</button>
 <button type="button" id="debug-ufo-btn">UFO呼ぶ</button>
+<button type="button" id="debug-reset-btn">データリセット</button>
 <button type="button" id="debug-sweet-center-btn" aria-pressed="false">落下中央 OFF</button>
 <button type="button" id="debug-colliders-btn" aria-pressed="false">コライダー OFF</button>
 <div id="ui-overlay">
@@ -2977,11 +2991,18 @@ function fetchWorldTop() {
   if (!WORLD_API_BASE) {
     // 未設定: デバッグ中はモックでUI確認、それ以外は null（じゅんびちゅう表示）
     if (document.documentElement.classList.contains('show-debug-ui')) {
-      return Promise.resolve([
-        { n: 'ぴょんきち', s: 12840 }, { n: 'SweetsFan', s: 11020 }, { n: 'はむたろう', s: 9800 },
-        { n: 'Mio', s: 8321 }, { n: 'ケーキだいすき', s: 7777 }, { n: 'Taku', s: 6543 },
-        { n: 'あんこ', s: 5332 }, { n: 'Nana', s: 4100 }, { n: 'ぷりん', s: 2500 }, { n: 'GG', s: 900 },
-      ]);
+      const mock = [
+        { n: 'Emma', s: 6210 }, { n: 'ぴょんきち', s: 5980 }, { n: 'Liam', s: 5540 },
+        { n: 'はむたろう', s: 5100 }, { n: 'Sophie', s: 4620 }, { n: 'ケーキだいすき', s: 4180 },
+        { n: 'Lucas', s: 3750 }, { n: 'あんこ', s: 3020 }, { n: 'Olivia', s: 2260 }, { n: 'ぷりん', s: 1480 },
+      ];
+      // 自分の自己ベストを正しい順位に合成（本番ではサーバー側のデータに自分の送信分が含まれる）
+      if (userData.best > 0) {
+        mock.push({ n: userData.nm || (LANG === 'ja' ? 'あなた' : 'You'), s: userData.best, _me: true });
+        mock.sort((a, b) => b.s - a.s);
+        mock.length = Math.min(mock.length, 10);
+      }
+      return Promise.resolve(mock);
     }
     return Promise.resolve(null);
   }
@@ -3069,7 +3090,9 @@ function renderWorldRanking(list) {
     if (!rows.length) { list.innerHTML = '<div class="ranking-msg">' + t('world_empty') + '</div>'; return; }
     list.innerHTML = rows.map(function (e, i) {
       const tier = i < 3 ? ' top' + (i + 1) : '';
-      return '<div class="ranking-row world' + tier + '">'
+      // 自分の行（名前一致 or モックの合成エントリ）は色で区別
+      const me = (e._me || (userData.nm && e.n === userData.nm)) ? ' me' : '';
+      return '<div class="ranking-row world' + tier + me + '">'
         + '<span class="rk">' + (medals[i] || (i + 1)) + '</span>'
         + '<span class="nm">' + escapeHtml(e.n) + '</span>'
         + '<span class="sc">' + (+e.s || 0) + '</span></div>';
@@ -3155,6 +3178,18 @@ document.getElementById('debug-hamster-btn').addEventListener('click', (e) => {
 document.getElementById('debug-ufo-btn').addEventListener('click', (e) => {
   e.preventDefault();
   if (state === 'falling' && !ufo) spawnUfo();
+});
+
+// デバッグ: 保存データのリセット（名前・ベスト・ランキング・あそびかた既読。言語設定は残す）
+document.getElementById('debug-reset-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  try {
+    localStorage.removeItem('oyatsu_best');
+    localStorage.removeItem('oyatsu_ranking');
+    localStorage.removeItem('oyatsu_name');
+    localStorage.removeItem('oyatsu_howto_seen');
+  } catch (err) {}
+  location.reload();
 });
 
 document.getElementById('debug-sweet-center-btn').addEventListener('click', (e) => {
