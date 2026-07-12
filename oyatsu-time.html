@@ -863,6 +863,8 @@
 const I18N = {
   ja: {
     doc_title: 'スイーツムツム 🍩',
+    logo_src: 'logo.png',
+    logo_alt: 'スイーツムツム',
     flavor: '✨ スイーツをたくさんつもう！ ✨',
     best: '🏆 ベスト',
     howto_btn: 'あそびかた',
@@ -912,7 +914,9 @@ const I18N = {
     name_later: 'あとで',
   },
   en: {
-    doc_title: 'Sweets Tower 🍩',
+    doc_title: 'Sweet Stack 🍩',
+    logo_src: 'logo_en.png',
+    logo_alt: 'Sweet Stack',
     flavor: '✨ Stack up sweet treats! ✨',
     best: '🏆 Best',
     howto_btn: 'How to Play',
@@ -1014,6 +1018,12 @@ function t(key, params) {
   for (const id in html) {
     const el = document.getElementById(id);
     if (el) el.innerHTML = t(html[id]);
+  }
+  // タイトルロゴを言語別画像に差し替え（logo.png / logo_en.png）
+  const logo = document.getElementById('title-logo');
+  if (logo) {
+    logo.src = t('logo_src');
+    logo.alt = t('logo_alt');
   }
   const soundBtn = document.getElementById('sound-toggle-btn');
   if (soundBtn) soundBtn.setAttribute('aria-label', t('sound_aria'));
