@@ -800,8 +800,8 @@
   <div class="result-dialog" role="dialog" aria-labelledby="ranking-title">
     <div class="title" id="ranking-title" style="font-size:24px;">ランキング</div>
     <div class="ranking-tabs" id="ranking-tabs" style="display:none;">
-      <button type="button" class="ranking-tab is-active" id="ranking-tab-local">じぶんのきろく</button>
-      <button type="button" class="ranking-tab" id="ranking-tab-world">せかい</button>
+      <button type="button" class="ranking-tab is-active" id="ranking-tab-world">せかい</button>
+      <button type="button" class="ranking-tab" id="ranking-tab-local">じぶんのきろく</button>
     </div>
     <div class="ranking-list" id="ranking-list"></div>
     <button class="btn" id="ranking-close-btn">とじる</button>
@@ -3206,7 +3206,8 @@ function switchRankingTab(tab) {
 function openRankingDialog() {
   // タブはせかいランキング有効時のみ。無効時はローカル単独（従来どおり）
   document.getElementById('ranking-tabs').style.display = worldRankingOn() ? 'flex' : 'none';
-  switchRankingTab('local');
+  // せかいランキングが使える環境では「せかい」を最初に見せる
+  switchRankingTab(worldRankingOn() ? 'world' : 'local');
   const el = document.getElementById('ranking-screen');
   el.style.display = 'flex';
   el.setAttribute('aria-hidden', 'false');
