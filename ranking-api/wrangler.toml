@@ -1,0 +1,11 @@
+# wrangler CLI でデプロイする場合の設定（ダッシュボード手順を使うなら不要）
+# 使い方: ranking-api/README.md を参照
+name = "oyatsu-ranking"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "oyatsu-ranking"
+# database_id は `wrangler d1 create oyatsu-ranking` の出力で置き換える
+database_id = "REPLACE_ME"

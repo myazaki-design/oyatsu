@@ -2966,7 +2966,8 @@ document.getElementById('pause-giveup').addEventListener('click', (e) => {
 });
 
 // --- せかいランキング（自前API。iOSアプリ(Capacitor)でのみ有効） ---
-// APIのURL。バックエンド構築後に設定する（例: 'https://oyatsu-ranking.xxx.workers.dev'）。
+// APIのURL。バックエンドのデプロイ手順は ranking-api/README.md を参照。
+// デプロイ後に Workers のURLを設定する（例: 'https://oyatsu-ranking.xxx.workers.dev'）。
 // 未設定の間は「じゅんびちゅう」表示（デバッグUI表示中はモックデータでUI確認できる）
 const WORLD_API_BASE = '';
 function isIosApp() {
