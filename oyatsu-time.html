@@ -2761,7 +2761,10 @@ function reviveFromContinue() {
   state = 'falling';
   falling = null;
   collapseTimer = 0;
+  // カメラは最初からタワー上部を映す（下からのパン中に最初の落下が始まり、
+  // 頂点が見えないままキャッチを強いられて崩れる原因になるため即スナップ）
   targetCameraY = computeTargetCameraY();
+  cameraY = targetCameraY;
   startMainBgm();
   syncPauseBtnVisibility();
   setTimeout(function () {
