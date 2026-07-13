@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/myazaki-design/oyatsu#readme",
   "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
     "@capacitor/ios": "^8.4.1",

@@ -59,6 +59,16 @@ python3 -m http.server 8090        # Windows: python -m http.server 8090
 - `/commit-push`: sync→add→日本語メッセージでコミット→プッシュの定型フロー
 - `/pull`: pull→取り込み要約→ゲーム変更があればiOS同期まで自動実行
 
+## 広告（AdMob = iOSアプリのみ。GMOはプラットフォーム広告で実装不要）
+
+- プラグイン: `@capacitor-community/admob`。ゲーム側は `admobOn()`（Capacitor判定）ガード内
+- **リワード = コンティニュー**（GMO版 `show_reward_ad` と同じ体験。結果はイベントリスナーで revive/finish）
+- **インタースティシャル = リザルト後**（2回に1回・90秒間隔の頻度制限: `INTERSTITIAL_EVERY_N_RESULTS` / `INTERSTITIAL_MIN_INTERVAL_MS`）
+- 子ども向け設定で初期化（`tagForChildDirectedTreatment` / `maxAdContentRating: 'G'` / npa=true。ATTダイアログ不要の構成）
+- ID管理: `ADMOB` 定数（アプリID: Info.plist の `GADApplicationIdentifier`、ユニットID: `ADMOB.interstitialId` / `ADMOB.rewardId`）
+- **`ADMOB.useTest = true` の間はGoogle公式テスト広告**。App Storeリリース時に `false` へ（本番IDでのテスト表示はポリシー違反）
+- 本番ユニットID設定済み（リワード=コンティニュー `/3785820427`、インタースティシャル=リザルト後 `/9980115149`）
+
 ## コミット規約
 
 - メッセージは日本語で「何を・なぜ」。末尾に `Co-Authored-By: Claude ...` を付与

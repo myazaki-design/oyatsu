@@ -2715,10 +2715,12 @@ let continueUsed = false;
 let continueData = null;      // 崩壊直前の積みスナップショット
 let continueOffering = false; // コンティニュー提示ダイアログ表示中
 
-// 提示できる条件: 未使用・積みがあった・広告APIあり（デバッグUI表示中は広告なしで動作確認可）
+// 提示できる条件: 未使用・積みがあった・広告が使える（GMO or AdMobロード済み。
+// デバッグUI表示中は広告なしで動作確認可）
 function canOfferContinue() {
   return !continueUsed && continueData && continueData.items.length > 0
-    && (gbAdOn() || document.documentElement.classList.contains('show-debug-ui'));
+    && (gbAdOn() || (admobOn() && admobState.rewardLoaded)
+      || document.documentElement.classList.contains('show-debug-ui'));
 }
 
 function showContinueDialog() {
@@ -2771,9 +2773,13 @@ document.getElementById('continue-yes').addEventListener('click', function (e) {
   e.preventDefault();
   hideContinueDialog();
   if (gbAdOn()) {
+    // GMO上: プラットフォームのリワード広告
     try {
       show_reward_ad({ reward_success_callback: reviveFromContinue, reward_fail_callback: finishToResult });
     } catch (err) { finishToResult(); }
+  } else if (admobOn() && admobState.rewardLoaded) {
+    // iOSアプリ: AdMobのリワード広告（結果はイベントリスナーで revive/finish）
+    showAdmobRewardAd();
   } else {
     reviveFromContinue(); // デバッグ動作: 広告なしでそのまま復活
   }
@@ -2875,6 +2881,9 @@ function showResult() {
   // リザルトのポップアップに合わせて決定音を鳴らす
   playButtonSfx();
   document.getElementById('result-screen').style.display = 'flex';
+
+  // iOSアプリ: リザルト後のインタースティシャル広告（2回に1回・90秒間隔の頻度制限つき）
+  maybeShowInterstitial();
 
   lastSessionCollapseLog = playCollapseLog.slice();
 
@@ -3119,6 +3128,121 @@ function postWorldScore(score) {
     }).catch(function () {});
   } catch (e) {}
 }
+
+// --- AdMob広告（iOSアプリのみ。GMOはプラットフォーム広告なので無関係）---
+// リワード = コンティニュー（GMO版のshow_reward_adと同じ体験）
+// インタースティシャル = リザルト後に頻度制限つきで表示
+const ADMOB = {
+  // 本番ID（AdMob管理画面で発行済み）
+  interstitialId: 'ca-app-pub-5048076405660377/9980115149', // リザルト後
+  rewardId: 'ca-app-pub-5048076405660377/3785820427',       // コンティニュー
+  // 開発中はtrue（Google公式テスト広告を表示）。App Storeリリース時にfalseへ
+  useTest: true,
+};
+// Google公式のテスト用ユニットID（どのアカウントでも使ってよい公開ID）
+const ADMOB_TEST = {
+  interstitialId: 'ca-app-pub-3940256099942544/4411468910',
+  rewardId: 'ca-app-pub-3940256099942544/1712485313',
+};
+function admobPlugin() {
+  try {
+    return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.AdMob) || null;
+  } catch (e) { return null; }
+}
+function admobOn() { return isIosApp() && !!admobPlugin(); }
+function admobRewardUnitId() {
+  return (ADMOB.useTest || !ADMOB.rewardId) ? ADMOB_TEST.rewardId : ADMOB.rewardId;
+}
+function admobInterstitialUnitId() {
+  return (ADMOB.useTest || !ADMOB.interstitialId) ? ADMOB_TEST.interstitialId : ADMOB.interstitialId;
+}
+
+const admobState = {
+  inited: false,
+  rewardLoaded: false,
+  interstitialLoaded: false,
+  rewardEarned: false,      // 直近のリワード広告で報酬を得たか
+  resultCount: 0,           // インタースティシャル頻度制御: リザルト表示回数
+  lastInterstitialAt: 0,    // 同: 最後に表示した時刻(ms)
+};
+const INTERSTITIAL_EVERY_N_RESULTS = 2;   // 2回のリザルトに1回
+const INTERSTITIAL_MIN_INTERVAL_MS = 90 * 1000; // かつ前回から90秒以上
+
+async function initAdMob() {
+  if (!admobOn() || admobState.inited) return;
+  admobState.inited = true;
+  const AdMob = admobPlugin();
+  try {
+    // 子ども向け設定: 行動ターゲティングなし・全年齢向けコンテンツのみ
+    await AdMob.initialize({
+      tagForChildDirectedTreatment: true,
+      tagForUnderAgeOfConsent: true,
+      maxAdContentRating: 'G',
+      initializeForTesting: ADMOB.useTest,
+    });
+    // イベント購読（リワード獲得・クローズ・ロード状態）
+    AdMob.addListener('onRewardedVideoAdLoaded', function () { admobState.rewardLoaded = true; });
+    AdMob.addListener('onRewardedVideoAdFailedToLoad', function () { admobState.rewardLoaded = false; });
+    AdMob.addListener('onRewardedVideoAdReward', function () { admobState.rewardEarned = true; });
+    AdMob.addListener('onRewardedVideoAdDismissed', function () {
+      // 閉じた時点で判定: 報酬を得ていれば復活、途中で閉じたらリザルトへ
+      const earned = admobState.rewardEarned;
+      admobState.rewardEarned = false;
+      admobState.rewardLoaded = false;
+      prepareRewardAd(); // 次回分を先読み
+      if (continueOffering) {
+        if (earned) reviveFromContinue();
+        else finishToResult();
+      }
+    });
+    AdMob.addListener('onRewardedVideoAdFailedToShow', function () {
+      admobState.rewardLoaded = false;
+      prepareRewardAd();
+      if (continueOffering) finishToResult();
+    });
+    AdMob.addListener('interstitialAdLoaded', function () { admobState.interstitialLoaded = true; });
+    AdMob.addListener('interstitialAdFailedToLoad', function () { admobState.interstitialLoaded = false; });
+    AdMob.addListener('interstitialAdDismissed', function () {
+      admobState.interstitialLoaded = false;
+      prepareInterstitialAd(); // 次回分を先読み
+    });
+    prepareRewardAd();
+    prepareInterstitialAd();
+  } catch (e) { /* 広告が使えなくてもゲームは続行 */ }
+}
+function prepareRewardAd() {
+  if (!admobOn()) return;
+  try {
+    admobPlugin().prepareRewardVideoAd({ adId: admobRewardUnitId(), npa: true }).catch(function () {});
+  } catch (e) {}
+}
+function prepareInterstitialAd() {
+  if (!admobOn()) return;
+  try {
+    admobPlugin().prepareInterstitial({ adId: admobInterstitialUnitId(), npa: true }).catch(function () {});
+  } catch (e) {}
+}
+/** コンティニュー用リワード広告を表示（結果はイベントリスナー側で処理） */
+function showAdmobRewardAd() {
+  admobState.rewardEarned = false;
+  try {
+    admobPlugin().showRewardVideoAd().catch(function () {
+      if (continueOffering) finishToResult();
+    });
+  } catch (e) { if (continueOffering) finishToResult(); }
+}
+/** リザルト後のインタースティシャル（頻度制限つき） */
+function maybeShowInterstitial() {
+  if (!admobOn() || !admobState.interstitialLoaded) return;
+  admobState.resultCount++;
+  const now = Date.now();
+  if (admobState.resultCount % INTERSTITIAL_EVERY_N_RESULTS !== 0) return;
+  if (now - admobState.lastInterstitialAt < INTERSTITIAL_MIN_INTERVAL_MS) return;
+  admobState.lastInterstitialAt = now;
+  try { admobPlugin().showInterstitial().catch(function () {}); } catch (e) {}
+}
+// 起動時に初期化（iOSアプリ以外では何もしない）
+initAdMob();
 
 let nameCandidate = ''; // ダイアログに表示中の生成名
 function showNameDialog() {
