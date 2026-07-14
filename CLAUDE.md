@@ -34,6 +34,9 @@ python3 -m http.server 8090        # Windows: python -m http.server 8090
 - **GMO**: リポジトリ直下のWebファイル一式が成果物。スコア送信・セーブ・リワード広告は gamebox API（`gbOn()`/`gbAdOn()` でガード済み。単体動作時はlocalStorageフォールバック）
 - **iOS**: sync実行 → `app-ios/ios/App/App.xcodeproj` をXcodeで開いてArchive（**Macのみ**。Windowsではゲーム開発のみ可能）
 - コンティニュー画面はGMO上（広告あり）でのみ表示される仕様
+- **App Store情報**: Bundle ID `com.yazaki.sweetstack` / Team ID `868GVN9WJJ`（個人・Masataka Yazaki） /
+  iPhone専用（`TARGETED_DEVICE_FAMILY = 1`・縦画面固定） / v1.0(1) を2026年に初回アップロード済み
+  ※ 旧 `com.yazaki.oyatsu` は別アカウントで予約済みのため使用不可、sweetstackへ変更した
 
 ## ランキング
 
