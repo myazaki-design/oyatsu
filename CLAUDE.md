@@ -35,8 +35,10 @@ python3 -m http.server 8090        # Windows: python -m http.server 8090
 - **iOS**: sync実行 → `app-ios/ios/App/App.xcodeproj` をXcodeで開いてArchive（**Macのみ**。Windowsではゲーム開発のみ可能）
 - コンティニュー画面はGMO上（広告あり）でのみ表示される仕様
 - **App Store情報**: Bundle ID `com.yazaki.sweetstack` / Team ID `868GVN9WJJ`（個人・Masataka Yazaki） /
-  iPhone専用（`TARGETED_DEVICE_FAMILY = 1`・縦画面固定） / v1.0(1) を2026年に初回アップロード済み
+  iPhone専用（`TARGETED_DEVICE_FAMILY = 1`・縦画面固定） / ストア英語名 **Sweet Stack Tower**（"Sweet Stack"は使用済みで不可） /
+  v1.0(1) を2026-07-15に審査提出済み（日英ローカライズ・プライバシー申告=トラッキングなし）
   ※ 旧 `com.yazaki.oyatsu` は別アカウントで予約済みのため使用不可、sweetstackへ変更した
+- **提出〜リリースの詳細手順とつまずき対処**: `docs/ios-release-workflow.md`（登録→Xcode設定→素材→Archive→Connect入力→提出→公開後タスクまで全工程）
 
 ## ランキング
 
