@@ -1644,6 +1644,33 @@ let cameraY = 0;       // how much the view scrolls up
 let targetCameraY = 0;  // smooth target
 let collapseCameraSmoothed = null; // collapse: eased framing target (starts at play cameraY)
 
+// --- 開始時のカメラ寄り（序盤の画面の寂しさ対策） ---
+// 積み始めはタワーが低く画面の大半が空になるため、開始時だけカメラを寄せて画を埋める。
+// 積み上がるにつれて等倍へ戻す。
+// ※元に戻したいときは START_ZOOM を 1 にするだけでよい（他は触らなくてよい）
+/** 開始時の寄り倍率。1 = 寄りなし（従来どおり） */
+const START_ZOOM = 1.22;
+/** 何段積んだら寄りが解けて等倍になるか */
+const START_ZOOM_RELEASE_STACK = 10;
+/** 寄りが引くなめらかさ（60fps換算の1フレーム追従率）。小さいほどゆっくり引く。
+ *  これが無いと着地の瞬間に倍率が階段状に変わってカクつく */
+const CAM_ZOOM_SMOOTH = 0.05;
+/** 実際に描画へ使う寄り倍率。目標（currentCamZoom）へ毎フレーム滑らかに追従する */
+let camZoomCurrent = START_ZOOM;
+/** 現在の寄り倍率（積むほど 1 に近づく） */
+function currentCamZoom() {
+  if (START_ZOOM <= 1) return 1;
+  // 崩壊中・リザルトは崩壊カメラが画角を制御するため寄らない（競合防止）
+  if (state !== 'falling' && state !== 'start') return 1;
+  const t = Math.min(1, stack.length / START_ZOOM_RELEASE_STACK);
+  const e = t * t * (3 - 2 * t); // smoothstep: 序盤は寄りを保ち、後半でなめらかに引く
+  return START_ZOOM + (1 - START_ZOOM) * e;
+}
+// 寄っている間は画面に映る横幅が狭くなるため、お皿が見切れないよう可動範囲も連動させる。
+// 目標値ではなく「実際に描画中の倍率」を使う（表示と可動範囲をズラさない）
+function plateMinX() { return W / 2 - W / (2 * camZoomCurrent) + PLATE_W * 0.4; }
+function plateMaxX() { return W / 2 + W / (2 * camZoomCurrent) - PLATE_W * 0.4; }
+
 
 function handleViewportResize() {
   // iOS: 回転やバックグラウンド復帰の途中で innerWidth/visualViewport が一瞬 0 付近の
@@ -2849,6 +2876,7 @@ document.getElementById('continue-no').addEventListener('click', function (e) {
 function startGame() {
   score = 0; stack = []; falling = null; mogumoguFx = null;
   particles = []; floatingTexts = [];
+  camZoomCurrent = START_ZOOM; // 開始時は寄った状態から始める（前回の値を引きずらない）
   destroyMatterWorld();
   comboCount = 0; totalPerfect = 0; totalGood = 0; totalOK = 0;
   collapseTimer = 0; gameElapsed = 0; maxTowerHeight = 0; maxStackCount = 0; slidingItems = [];
@@ -2965,8 +2993,8 @@ canvas.addEventListener('pointermove', (e) => {
   e.preventDefault();
   const dx = e.clientX - dragStartX;
   if (Math.abs(dx) > 5) pointerMoved = true;
-  const margin = PLATE_W * 0.4;
-  plateX = Math.max(margin, Math.min(W - margin, plateStartX + dx * PLATE_DRAG_SENS));
+  // 可動範囲は寄り倍率に連動（寄っている間は画面内に収まる範囲に狭める）
+  plateX = Math.max(plateMinX(), Math.min(plateMaxX(), plateStartX + dx * PLATE_DRAG_SENS));
 });
 
 canvas.addEventListener('pointerup', (e) => {
@@ -3981,12 +4009,11 @@ function update(dt) {
 
   // Keyboard plate movement（崩壊中もお皿を操作してアイテムを蹴散らせる）
   if (!isDragging) {
-    const margin = PLATE_W * 0.4;
     if (keysDown['ArrowLeft'] || keysDown['a'] || keysDown['A']) {
-      plateX = Math.max(margin, plateX - PLATE_SPEED * UNIT * fs);
+      plateX = Math.max(plateMinX(), plateX - PLATE_SPEED * UNIT * fs);
     }
     if (keysDown['ArrowRight'] || keysDown['d'] || keysDown['D']) {
-      plateX = Math.min(W - margin, plateX + PLATE_SPEED * UNIT * fs);
+      plateX = Math.min(plateMaxX(), plateX + PLATE_SPEED * UNIT * fs);
     }
   }
 
@@ -4048,6 +4075,9 @@ function update(dt) {
     targetCameraY = computeTargetCameraY();
     cameraY += (targetCameraY - cameraY) * CAM_PLAY_FOLLOW_SMOOTH;
   }
+  // 寄り倍率を目標へ滑らかに追従（着地の瞬間に階段状へ変わるのを防ぐ）。
+  // fs を使って高リフレッシュレート端末でも同じ速さで引くようにする
+  camZoomCurrent += (currentCamZoom() - camZoomCurrent) * (1 - Math.pow(1 - CAM_ZOOM_SMOOTH, fs));
 
   // Falling
   if (state === 'falling' && falling) {
@@ -4908,6 +4938,16 @@ function drawSky() {
 
 // --- Draw ---
 function draw() {
+  // 開始時のカメラ寄り: ワールド描画（空・背景・タワー・落下アイテム・演出）だけを拡大する。
+  // HUD（フィーバーゲージ・崩壊フラッシュ）は画面固定なので、後段で restore してから描く
+  const camZoom = camZoomCurrent; // 目標ではなく追従中の値を使う（なめらかに引く）
+  ctx.save();
+  if (camZoom !== 1) {
+    // お皿の位置を基準に寄る（お皿と地面の見え方が安定する）
+    ctx.translate(W / 2, PLATE_Y);
+    ctx.scale(camZoom, camZoom);
+    ctx.translate(-W / 2, -PLATE_Y);
+  }
   // ベースは高度連動の空（昼空→夜空→宇宙）。背景画像が切れても空が続いて見える
   ctx.globalAlpha = 1;
   drawSky();
@@ -5134,6 +5174,7 @@ function draw() {
     ctx.fillText(ft.text, ft.x, ft.screenY - 20 * UNIT);
   }
   ctx.globalAlpha = 1;
+  ctx.restore(); // ここまでがワールド描画（寄りの対象）。以降は画面固定のHUD
 
   // 無敵モード HUD（残り時間バー＋ラベル）
   if (invincibleTimer > 0) {
