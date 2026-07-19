@@ -156,6 +156,7 @@
   }
   .pause-modal.is-open { display: flex; }
   .pause-modal-dialog {
+    position: relative;
     width: 100%; max-width: 340px; max-height: calc(100dvh - 48px); overflow-y: auto;
     /* あそびかた/リザルトと同じフレーム画像。比率を保って歪みを防ぐ */
     background: url('result_frame.png') center top / 100% 100% no-repeat;
@@ -164,26 +165,16 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     filter: drop-shadow(0 18px 40px rgba(205,150,105,0.4));
   }
+  /* 見出しは他ダイアログと同様に上部へ配置（絶対配置でボタンの中央位置は動かさない）。色はピンク */
   .pause-modal-title {
-    font-size: 22px; font-weight: 900; color: var(--ink);
-    margin-bottom: 20px;
+    position: absolute; top: 74px; left: 42px; right: 42px;
+    font-size: 22px; font-weight: 900; color: var(--accent);
+    margin: 0;
   }
-  /* 一時停止メニュー内のボタンサイズ（見た目は .btn / .btn-sub 共通デザイン） */
-  .btn-pause-option { width: 82%; margin-bottom: 12px; padding: 13px 16px; font-size: 16px; }
-  .pause-modal-dialog .btn { width: 100%; margin-top: 8px; padding: 14px 16px; font-size: 18px; }
-  /* 横長ピンクボタン（つづきをプレイ）は、丸いツヤ＋上部の白insetが「白い横線」に見えるので、
-     上辺に沿ったフル幅の柔らかいシートに差し替える */
-  .pause-modal-dialog .btn::before {
-    top: 0; left: 0; right: 0; height: 46%;
-    border-radius: 50px 50px 40% 40% / 50px 50px 100% 100%;
-    background: linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0));
-  }
-  .pause-modal-dialog .btn {
-    box-shadow: 0 6px 0 var(--tsum-pink-shadow), 0 12px 24px rgba(205,150,105,0.35);
-  }
-  .pause-modal-dialog .btn:active {
-    box-shadow: 0 2px 0 var(--tsum-pink-shadow), 0 4px 10px rgba(0,0,0,0.3);
-  }
+  /* 一時停止メニューも共通ルールに統一。あそびかた/あきらめる/音声トグルは M、つづきをプレイは L。
+     ボタン間は 14px でそろえる（サイズ・見た目は他画面のピルボタンと共通の .btn / .btn-sub 系） */
+  .btn-pause-option { min-width: 210px; margin-bottom: 14px; padding: 12px 40px; font-size: 17px; }
+  .pause-modal-dialog .btn { margin-top: 14px; }
   #start-screen {
     position: absolute;
     top: var(--game-top, 0px); bottom: var(--game-top, 0px);
@@ -240,24 +231,19 @@
     font-size: 19px; font-weight: 900; color: var(--accent);
     text-align: center;
   }
-  #name-shuffle { margin: 0 0 16px; padding: 9px 26px; font-size: 13px; }
-  #name-screen .btn { padding: 12px 40px; font-size: 17px; flex-shrink: 0; }
-  #name-screen .btn-sub { margin: 14px 0 0; padding: 9px 30px; font-size: 13px; }
-  #name-screen #name-shuffle { margin: 0 0 16px; }
+  /* なまえダイアログ: サイズは共通クラス(L/M)に統一。ここは配置(マージン/縮み防止)のみ。ボタン間は 14px で統一 */
+  #name-screen .btn { flex-shrink: 0; }
+  #name-screen .btn-sub { margin: 14px 0 0; flex-shrink: 0; }
+  #name-shuffle { margin: 0 0 14px; }
   /* コンティニュー: 中身が少ないのでフレーム比率を保って中央寄せ */
   #continue-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: center; }
   .continue-text {
     font-size: 14px; color: var(--ink); font-weight: 700; line-height: 1.9; margin: 10px 0 18px;
   }
-  #continue-screen .btn { padding: 13px 26px; font-size: 16px; flex-shrink: 0; }
-  #continue-screen .btn-sub { margin: 25px 0 0; padding: 10px 34px; font-size: 14px; }
-  /* ランキング（ローカルTOP10） */
-  /* ベストスコア表示の直下に置く */
+  #continue-screen .btn { flex-shrink: 0; }
+  #continue-screen .btn-sub { margin: 16px 0 0; flex-shrink: 0; }
+  /* ランキング（ローカルTOP10）: ベストスコア表示の直下に置く */
   #ranking-btn { margin: 0 0 16px; }
-  /* 言語（ja/en）で文字数が変わってもボタン幅が揃うよう最小幅を固定 */
-  #start-screen .btn-sub { min-width: 200px; }
-  #start-screen .btn { min-width: 230px; }
-  #howto-screen .btn, #ranking-screen .btn, #result-screen .btn { min-width: 180px; }
   /* フレーム画像の縦横比を固定して潰れを防ぐ */
   #ranking-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: flex-start; padding: 60px 40px 44px; }
   /* とじるは下部に固定（リストの量に関わらず） */
@@ -288,7 +274,7 @@
   .ranking-list {
     width: 100%; display: flex; flex-direction: column; gap: 7px;
     margin: 10px 0 12px;
-    /* 10件はフレームに収まらないので、リストだけ内部スクロール */
+    /* 件数がフレームに収まらないので、リストだけ内部スクロール（世界ランキングは最大30件） */
     flex: 1 1 auto; min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -372,8 +358,8 @@
       dialogPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both,
       howtoFloat 3.4s ease-in-out 0.3s infinite;
   }
-  /* とじるボタン: 縦詰めでも潰れて文字が隠れないよう縮小禁止（枠のふちに重なってもOK） */
-  #howto-screen .btn { padding: 12px 38px; font-size: 19px; margin-top: 8px; flex-shrink: 0; }
+  /* とじるボタン: サイズは共通クラス(L)。縦詰めでも潰れないよう縮小禁止のみ指定 */
+  #howto-screen .btn { margin-top: 14px; flex-shrink: 0; }
   /* あそびかた: サムネ左・説明右の行レイアウト */
   .howto-rows {
     display: flex; flex-direction: column; gap: 3px;
@@ -408,7 +394,7 @@
   }
   #result-screen .result-score { font-size: 46px; }
   #result-screen .result-points { margin: 12px 0 20px; }
-  #result-screen .btn { padding: 14px 38px; font-size: 19px; }
+  /* けっか画面の「タイトルへ」もサイズは共通クラス(L)に統一（個別の padding/font 指定は撤去） */
   .title {
     font-size: 44px; font-weight: 900; color: var(--accent);
     text-shadow: 0 2px 0 rgba(255,255,255,0.9), 0 6px 18px rgba(240,100,142,0.3);
@@ -433,6 +419,8 @@
   }
   #start-screen .btn-sub {
     box-shadow: 0 5px 0 #e9cdb9, 0 0 18px rgba(255,255,255,0.65), inset 0 2px 0 #fff;
+    /* ランキング/あそびかたの下に一定の隙間（はじめる=LL の上が詰まらないように） */
+    margin-bottom: 16px;
   }
   /* サブボタン: 不透明でツヤのある白系（メインの赤ボタンと同じ立体感） */
   .btn-sub, .btn-pause-option {
@@ -445,8 +433,9 @@
     box-shadow: 0 5px 0 #e9cdb9, 0 10px 22px rgba(205,150,105,0.28), inset 0 2px 0 #fff;
     transition: transform 0.1s, box-shadow 0.1s; pointer-events: auto;
   }
+  /* ツヤ。高さを抑えて下端がボタン中央に来ないようにする（中央付近に白い横線として見えるのを防ぐ） */
   .btn-sub::before, .btn-pause-option::before {
-    content: ''; position: absolute; top: 4px; left: 12%; right: 12%; height: 38%;
+    content: ''; position: absolute; top: 4px; left: 12%; right: 12%; height: 30%;
     border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0));
     pointer-events: none;
   }
@@ -454,7 +443,8 @@
     transform: translateY(4px);
     box-shadow: 0 1px 0 #e9cdb9, 0 3px 8px rgba(205,150,105,0.25), inset 0 2px 0 #fff;
   }
-  .btn-sub { margin-bottom: 26px; padding: 12px 40px; font-size: 17px; }
+  /* M: メニュー/副次アクション（ランキング・あそびかた・やめる 等） */
+  .btn-sub { min-width: 210px; padding: 12px 40px; font-size: 17px; }
   /* オプション内のサブボタンは茶色文字 */
   .btn-pause-option { color: var(--ink); }
   /* あきらめる: ピンク文字で区別 */
@@ -495,18 +485,29 @@
     background-image: url('bgm_icon_01.png');
   }
   #pause-sound-toggle { display: flex; align-items: center; justify-content: center; }
+  /* オプションの音ボタンはアイコンのみ。文字ボタン(M)は「文字1行分」が中身の高さになるため、
+     アイコンの箱も同じ高さ(≒1行分)にしてボタン高さをそろえる。
+     背景は contain なのでアイコン自体の見た目サイズは変わらない */
+  #pause-sound-toggle .snd-icon { width: 29px; height: 1.45em; }
+  /* 見出しを絶対配置で上部に出した分、ボタン群が上に寄るのを補正して元の位置に戻す */
+  .pause-modal-dialog > .btn-pause-option:first-of-type { margin-top: 46px; }
+  /* ボタンサイズは3段に統一（例外を除く）。基準の .btn は L。タイトルのみ .btn-ll で LL。副次は .btn-sub で M。
+     L: 閉じる/主要アクション（とじる・けってい・つづきをプレイ 等） */
   .btn {
     position: relative; overflow: hidden;
     background: linear-gradient(180deg, var(--tsum-pink-light) 0%, var(--tsum-pink) 45%, var(--tsum-pink-dark) 100%);
     color: #fff; border: none;
-    border-radius: 50px; padding: 18px 54px; font-size: 22px; font-weight: 900;
+    border-radius: 50px; min-width: 210px; padding: 15px 46px; font-size: 20px; font-weight: 900;
     font-family: 'Zen Maru Gothic', sans-serif; cursor: pointer;
     text-shadow: 0 2px 0 rgba(178,58,143,0.6);
     box-shadow: 0 7px 0 var(--tsum-pink-shadow), 0 16px 32px rgba(205,150,105,0.4), inset 0 3px 0 rgba(255,255,255,0.55);
     transition: transform 0.1s, box-shadow 0.1s; pointer-events: auto;
   }
+  /* LL: タイトルの「はじめる」専用（例外的に最大サイズ） */
+  .btn-ll { min-width: 240px; padding: 18px 54px; font-size: 22px; }
+  /* ツヤ。高さを抑えて下端がボタン中央に来ないようにする（中央付近に白い横線として見えるのを防ぐ） */
   .btn::before {
-    content: ''; position: absolute; top: 5px; left: 12%; right: 12%; height: 38%;
+    content: ''; position: absolute; top: 5px; left: 12%; right: 12%; height: 30%;
     border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
     pointer-events: none;
   }
@@ -794,7 +795,7 @@
   <div id="title-best" class="title-best" style="display:none;"><span id="title-best-label">🏆 ベスト</span> <span id="title-best-num">0</span></div>
   <button class="btn-sub" id="ranking-btn">ランキング</button>
   <button class="btn-sub" id="howto-btn">あそびかた</button>
-  <button class="btn" id="start-btn">はじめる</button>
+  <button class="btn btn-ll" id="start-btn">はじめる</button>
 </div>
 <div id="ranking-screen" aria-hidden="true">
   <div class="result-dialog" role="dialog" aria-labelledby="ranking-title">
@@ -1063,6 +1064,8 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
 let W, H, PLATE_Y, PLATE_W, PLATE_H, PLATE_DRAW_OFFSET_Y, UNIT;
+// 上部セーフエリア（ノッチ/Dynamic Island）の高さ(px)。resize() で更新し、上部HUDの押し下げに使う
+let SAFE_TOP = 0;
 // UNIT 依存の揺れ定数。リサイズで UNIT が変わっても追従するよう resize() 内で再計算する
 let SWAY_ANGLE_PER_PX, SWAY_MAX_X, SWAY_MAX_V;
 
@@ -1163,6 +1166,7 @@ function resize() {
   const cs = getComputedStyle(document.body);
   const safeBottom = parseFloat(cs.getPropertyValue('--sab')) || 0;
   const safeTop = parseFloat(cs.getPropertyValue('--sat')) || 0;
+  SAFE_TOP = safeTop;
   // スマホ（タッチ主体の端末）は画面いっぱい、PC はスマホ風の縦長固定フレーム（最大 420×910）。
   // iframe埋め込み時（GMOかんたんゲームボックス等）はプラットフォーム側が枠を持つので、
   // PCでも額縁を付けず与えられた領域いっぱいに表示する（二重額縁の防止）
@@ -1228,11 +1232,13 @@ const IMG_CLOUD2 = loadImage('cloude02.png');
 const IMG_UFO = loadImage('ufo.png');
 
 // iOS: 画面収録（特にマイクON）で音声セッションが通話系構成に切り替わり、
-// 録画の音が倍速/ピッチ異常になる既知問題への対策。セッション種別を「再生専用」に
-// 固定するようヒントを出す（Safari 16.4+ / 対応WKWebView。非対応環境では無視される）
+// 録画の音が倍速/ピッチ異常になる既知問題への対策として「非録音の再生系」に固定する。
+// 'playback' はマナーモード（消音スイッチ）を無視してしまうため、消音スイッチに従い
+// 画面ロックで停止する 'ambient' を使う（ゲームとして自然な挙動。倍速対策は非録音系なら維持される）。
+// Safari 16.4+ / 対応WKWebView。非対応環境では無視される。
 try {
   if (navigator.audioSession && 'type' in navigator.audioSession) {
-    navigator.audioSession.type = 'playback';
+    navigator.audioSession.type = 'ambient';
   }
 } catch (e) { /* noop */ }
 
@@ -1337,13 +1343,38 @@ BGM_MAIN.preload = 'metadata'; // 1.3MB あるので起動時は読み込まな�
 BGM_MAIN.loop = true;
 const BGM_MAIN_VOL = 0.45;
 function startMainBgm() {
-  BGM_MAIN.currentTime = 0;
   BGM_MAIN.volume = (sfxEnabled ? 1 : 0) * BGM_MAIN_VOL;
-  BGM_MAIN.play().catch(() => {});
+  // すでに再生中（タイトルBGMからの継続）なら位置を保って途切れさせない
+  if (BGM_MAIN.paused) {
+    BGM_MAIN.currentTime = 0;
+    BGM_MAIN.play().catch(() => {});
+  }
 }
 function stopMainBgm() {
   if (!BGM_MAIN.paused) BGM_MAIN.pause();
   BGM_MAIN.currentTime = 0;
+}
+// タイトルBGM: iOSアプリのみ再生（GMO/Webでは鳴らさない＝タイトルは無音のまま）。
+// 自動再生がブロックされる環境では、画面への最初のタッチ/クリックで開始する（1回だけ）。
+let _titleBgmKickArmed = false;
+function startTitleBgm() {
+  if (!isIosApp() || state !== 'start' || !sfxEnabled || !BGM_MAIN.paused) return;
+  BGM_MAIN.volume = BGM_MAIN_VOL;
+  BGM_MAIN.play().catch(() => {
+    if (_titleBgmKickArmed) return;
+    _titleBgmKickArmed = true;
+    const kick = () => {
+      document.removeEventListener('touchstart', kick);
+      document.removeEventListener('click', kick);
+      _titleBgmKickArmed = false;
+      if (state === 'start' && sfxEnabled && BGM_MAIN.paused) {
+        BGM_MAIN.volume = BGM_MAIN_VOL;
+        BGM_MAIN.play().catch(() => {});
+      }
+    };
+    document.addEventListener('touchstart', kick);
+    document.addEventListener('click', kick);
+  });
 }
 
 // 崩壊時のゲームオーバー音（ヒットストップ明けに鳴らすジングル）
@@ -1394,10 +1425,15 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     if ((state === 'falling' || state === 'collapsed') && !paused) setPaused(true);
     stopAllAudioForBackground();
+  } else {
+    // 復帰時はビューポートが確定するのを待って再レイアウト（画面が極小で固定される不具合対策）
+    scheduleResizeRetries();
   }
 });
 // iOSはタブ/アプリ終了時に visibilitychange が飛ばないことがあるため pagehide でも止める
 window.addEventListener('pagehide', stopAllAudioForBackground);
+// bfキャッシュからの復帰時も再レイアウト（背景から戻したときのサイズ崩れ対策）
+window.addEventListener('pageshow', scheduleResizeRetries);
 
 let _prevHudCount = -1;
 function syncHudCountDisplay() {
@@ -1610,6 +1646,11 @@ let collapseCameraSmoothed = null; // collapse: eased framing target (starts at 
 
 
 function handleViewportResize() {
+  // iOS: 回転やバックグラウンド復帰の途中で innerWidth/visualViewport が一瞬 0 付近の
+  // 異常値を返すことがある。その値でキャンバスを極小サイズに固定してしまわないよう、
+  // 明らかに異常な寸法のときは適用せず、scheduleResizeRetries の再試行に委ねる。
+  const vhNow = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  if (window.innerWidth < 100 || vhNow < 100) return;
   const prevW = W, prevUnit = UNIT;
   resize();
   if (state === 'start') { plateX = W / 2; return; }
@@ -1631,8 +1672,20 @@ function handleViewportResize() {
     falling.x = Math.max(0, Math.min(W, falling.x * kW));
   }
 }
+// iOS: 回転・フォアグラウンド復帰の直後は寸法が確定しておらず、単発のイベントだけだと
+// 極小サイズのまま固定されることがある。寸法が落ち着く頃に数回レイアウトし直して確実に補正する。
+let _resizeRetryTimers = [];
+function scheduleResizeRetries() {
+  _resizeRetryTimers.forEach(clearTimeout);
+  _resizeRetryTimers = [60, 200, 500].map(function (d) {
+    return setTimeout(handleViewportResize, d);
+  });
+}
 window.addEventListener('resize', handleViewportResize);
-window.addEventListener('orientationchange', handleViewportResize);
+window.addEventListener('orientationchange', function () {
+  handleViewportResize();
+  scheduleResizeRetries();
+});
 // スマホのツールバー開閉で見える高さが変わったときも追従
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', handleViewportResize);
@@ -2961,6 +3014,7 @@ function goToTitle() {
   document.getElementById('start-screen').style.display = 'flex';
   plateX = W / 2; prevPlateX = W / 2;
   syncPauseBtnVisibility();
+  startTitleBgm(); // iOSはタイトルに戻ったらBGM再開（すでにプレイ済みなので再生はブロックされない）
 }
 
 document.getElementById('start-btn').addEventListener('click', requestStartGame);
@@ -2998,7 +3052,7 @@ document.getElementById('sound-toggle-btn').addEventListener('click', (e) => {
   applySfxVolume();
   updatePauseSoundToggleLabel();
   updateSoundToggleBtn();
-  if (sfxEnabled) playButtonSfx(); // ONにしたときだけ確認音
+  if (sfxEnabled) { playButtonSfx(); startTitleBgm(); } // ONにしたときだけ確認音＋タイトルBGM開始（iOS/タイトル時のみ実効）
 });
 
 // 一時停止メニュー: あそびかた（howtoダイアログは一時停止モーダルより手前に出る）
@@ -3098,13 +3152,13 @@ function fetchWorldTop() {
       if (userData.best > 0) {
         mock.push({ n: userData.nm || (LANG === 'ja' ? 'あなた' : 'You'), s: userData.best, _me: true });
         mock.sort((a, b) => b.s - a.s);
-        mock.length = Math.min(mock.length, 10);
+        mock.length = Math.min(mock.length, 30);
       }
       return Promise.resolve(mock);
     }
     return Promise.resolve(null);
   }
-  return fetch(WORLD_API_BASE + '/top?limit=10').then((r) => {
+  return fetch(WORLD_API_BASE + '/top?limit=30').then((r) => {
     if (!r.ok) throw new Error('http ' + r.status);
     return r.json();
   });
@@ -3246,6 +3300,8 @@ function maybeShowInterstitial() {
 }
 // 起動時に初期化（iOSアプリ以外では何もしない）
 initAdMob();
+// 起動時（タイトル表示）にBGMを開始（iOSアプリのみ。自動再生ブロック時は最初のタッチで開始）
+startTitleBgm();
 
 let nameCandidate = ''; // ダイアログに表示中の生成名
 function showNameDialog() {
@@ -3307,7 +3363,7 @@ function renderWorldRanking(list) {
     if (rankingTab !== 'world') return; // 表示中にタブが変わっていたら捨てる
     if (rows === null) { list.innerHTML = '<div class="ranking-msg">' + t('world_preparing') + '</div>'; return; }
     if (!rows.length) { list.innerHTML = '<div class="ranking-msg">' + t('world_empty') + '</div>'; return; }
-    list.innerHTML = rows.slice(0, 10).map(function (e, i) {
+    list.innerHTML = rows.slice(0, 30).map(function (e, i) {
       const tier = i < 3 ? ' top' + (i + 1) : '';
       // 自分の行（名前一致 or モックの合成エントリ）は色で区別
       const me = (e._me || (userData.nm && e.n === userData.nm)) ? ' me' : '';
@@ -5085,8 +5141,9 @@ function draw() {
     const barW = 140 * UNIT;
     const barH = 12 * UNIT;
     const barX = (W - barW) / 2;
-    // 上辺に張り付かないよう余白を確保（ラベルの文字上端で約 22*UNIT の空き）
-    const barY = 50 * UNIT;
+    // 上辺／ノッチ（Dynamic Island）に被らないよう押し下げる。
+    // 通常端末は従来どおり 50*UNIT、セーフエリアがある端末はその分だけ下げる。
+    const barY = Math.max(50 * UNIT, SAFE_TOP + 30 * UNIT);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = `900 ${Math.round(18 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
