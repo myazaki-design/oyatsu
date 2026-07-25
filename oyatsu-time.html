@@ -102,10 +102,11 @@
     top: calc(var(--game-top, 0px) + max(10px, env(safe-area-inset-top)));
     z-index: 25;
   }
+  /* スコア枠。インゲームで常時表示され毎フレーム再合成されるため backdrop-filter は使わない
+     （blur は描画負荷が高くコマ落ちの原因になる）。ブラーの代わりに背景の不透明度を上げて
+     文字の可読性を確保する */
   .hud-box {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: linear-gradient(150deg, rgba(255,255,255,0.88), rgba(255,255,255,0.74));
     border-radius: 18px; padding: 8px 18px;
     border: 1.5px solid var(--glass-line);
     box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.9);
@@ -232,16 +233,22 @@
     text-align: center;
   }
   /* なまえダイアログ: サイズは共通クラス(L/M)に統一。ここは配置(マージン/縮み防止)のみ。ボタン間は 14px で統一 */
-  #name-screen .btn { flex-shrink: 0; }
-  #name-screen .btn-sub { margin: 14px 0 0; flex-shrink: 0; }
-  #name-shuffle { margin: 0 0 14px; }
+  /* なまえダイアログのボタン（上から: べつのなまえ / けってい / あとで）。
+     ボタンは3Dの底エッジ（box-shadow 0 5〜7px 0）が下に張り出すため、その分を見込んで
+     隙間を広めに取る。ID2つで指定して .btn-sub 側の指定に負けないようにする
+     （以前は #name-screen .btn-sub が勝って下マージンが消え、ボタンが密着していた） */
+  #name-screen .btn, #name-screen .btn-sub { flex-shrink: 0; }
+  #name-screen #name-shuffle { margin: 0 0 20px; }
+  #name-screen #name-ok { margin: 0 0 20px; }
+  #name-screen #name-skip { margin: 0; }
   /* コンティニュー: 中身が少ないのでフレーム比率を保って中央寄せ */
   #continue-screen .result-dialog { aspect-ratio: 818 / 1318; justify-content: center; }
   .continue-text {
     font-size: 14px; color: var(--ink); font-weight: 700; line-height: 1.9; margin: 10px 0 18px;
   }
+  /* コンティニュー: 「こうこくを見てつづける」と「やめる」を誤タップしないよう間隔を広めに */
   #continue-screen .btn { flex-shrink: 0; }
-  #continue-screen .btn-sub { margin: 16px 0 0; flex-shrink: 0; }
+  #continue-screen .btn-sub { margin: 24px 0 0; flex-shrink: 0; }
   /* ランキング（ローカルTOP10）: ベストスコア表示の直下に置く */
   #ranking-btn { margin: 0 0 16px; }
   /* フレーム画像の縦横比を固定して潰れを防ぐ */
@@ -692,12 +699,12 @@
     box-sizing: border-box;
     padding: 5px 8px calc(5px + env(safe-area-inset-bottom, 0px));
     display: flex; align-items: center; gap: 6px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,246,238,0.8));
+    /* スコア枠と同様、インゲームで常時表示＋毎フレーム更新されるため backdrop-filter は使わない
+       （元の背景がほぼ不透明なのでブラーは見た目にほぼ寄与せず、負荷だけが残っていた） */
+    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,246,238,0.88));
     border: 1px solid var(--glass-line);
     border-bottom: none;
     border-radius: 10px 10px 0 0;
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
     box-shadow: 0 -2px 8px rgba(205,150,105,0.2), inset 0 1px 0 rgba(255,255,255,0.9);
   }
   /* ゲージの溝。下地はオレンジ→赤のグラデーション（伸縮してもグラデが潰れないよう固定） */
@@ -922,6 +929,8 @@ const I18N = {
     r_detail: 'さいだい{n}コつんだ！ (P:{p} G:{g} OK:{ok})',
     mogu: 'もぐ',
     yum: '…おいし♪',
+    combo: '{n} コンボ!',
+    combo_milestone: '{n} コンボ!!',
     ranking_btn: 'ランキング',
     ranking_title: 'ランキング',
     ranking_empty: 'まだきろくがないよ',
@@ -975,6 +984,8 @@ const I18N = {
     r_detail: 'Stacked {n} max! (P:{p} G:{g} OK:{ok})',
     mogu: 'Nom',
     yum: '...Yum!♪',
+    combo: '{n} COMBO!',
+    combo_milestone: '{n} COMBO!!',
     ranking_btn: 'Ranking',
     ranking_title: 'RANKING',
     ranking_empty: 'No records yet',
@@ -1230,6 +1241,9 @@ const IMG_BATTLE_BG = loadImage('battle_bg.png');
 const IMG_CLOUD1 = loadImage('cloude01.png');
 const IMG_CLOUD2 = loadImage('cloude02.png');
 const IMG_UFO = loadImage('ufo.png');
+// 操作ヒント用（お皿の下に出す指と矢印）。arrow_icon.png は左向きなので、右向きは反転して描く
+const IMG_HAND = loadImage('hand_icon.png');
+const IMG_ARROW = loadImage('arrow_icon.png');
 
 // iOS: 画面収録（特にマイクON）で音声セッションが通話系構成に切り替わり、
 // 録画の音が倍速/ピッチ異常になる既知問題への対策として「非録音の再生系」に固定する。
@@ -1498,8 +1512,30 @@ const FALL_TERMINAL_MULT = 1.05;
 const FALL_GRAVITY = 0.24;
 /** タップ急降下の速度（UNIT/フレーム） */
 const FALL_FAST_DROP = 80;
-/** 最初のフィーバーになるまでの追加スロー（さらに1.2倍ゆっくり） */
-const PRE_FEVER_SLOW = 1 / 1.2;
+/** 最初のフィーバーになるまでの追加スロー。
+ *  落下は「見て・狙って・置く」余裕が出るまでゆっくりにし、難しさは落下位置のブレ
+ *  （SPAWN_SPREAD_*）で作る方針。速さで殺さず、狙いの難しさで勝負させる */
+const PRE_FEVER_SLOW = 1 / 1.45;
+/** 落下位置のブレ幅（画面半分に対する割合）。速度を落とした分、ここで難易度を出す。
+ *  MIN は1個目から適用する（中央固定にしない＝最初から「狙って動かす」遊びにする）。
+ *  積むほど MAX へ二乗カーブで広がる */
+const SPAWN_SPREAD_MIN_FRAC = 0.30;
+const SPAWN_SPREAD_MAX_FRAC = 0.75;
+/** ブレが最大に達する積み数（小さいほど早く難しくなる） */
+const SPAWN_SPREAD_FULL_AT = 20;
+/** 初プレイ（ベスト未記録）のとき、最初の数個をさらにゆっくり落として操作を掴ませる。
+ *  PRE_FEVER_SLOW からの相対倍率で持つ（基準を変えても必ず「初回のほうが遅い」を保つ） */
+const FIRST_PLAY_SLOW = PRE_FEVER_SLOW / 1.15;
+/** 上記スローを適用する個数。これを超えたら通常速度へ戻す */
+const FIRST_PLAY_SLOW_UNTIL_STACK = 3;
+/** 初プレイのスワイプ操作ヒント（指アイコン）を表示中か。スワイプしたら消える */
+let swipeHintActive = false;
+/** ヒントの経過時間（左右に揺れるアニメ用） */
+let swipeHintT = 0;
+/** まだ一度も遊び切っていない（ベスト未記録）＝初プレイか。
+ *  初回だけ落下をゆっくりにする判定に使う（操作ヒントは毎回出すのでこれとは無関係）。
+ *  専用フラグを持たずベストスコアで判定するので、一度プレイすれば自然に切れる */
+function isFirstPlay() { return !(userData && userData.best > 0); }
 /** フィーバー後: この差分スコアを稼ぐと最高速（＝フィーバー時の速度）に到達する */
 const SCORE_SPEED_SCALE = 9000;
 /** 最初のフィーバーを既に経験したか（落下速度の段階制御に使用） */
@@ -1515,6 +1551,18 @@ let falling = null;
 let particles = [];
 let floatingTexts = [];
 let comboCount = 0;
+/** コンボ表示を出し始める連続数（1は「ただの成功」なので出さない） */
+const COMBO_SHOW_FROM = 2;
+/** 何コンボごとに中央バナーを出すか */
+const COMBO_MILESTONE_EVERY = 10;
+/** コンボ中央バナー（節目のみ）。null = 非表示 */
+let comboBanner = null;
+/** コンボ数に応じた見た目。伸びるほど色が熱く・文字が大きくなる */
+function comboStyle(n) {
+  if (n >= COMBO_MILESTONE_EVERY) return { key: 'combo_milestone', color: '#FF4F81', size: 1.35 };
+  if (n >= 5) return { key: 'combo', color: '#FF9F43', size: 1.18 };
+  return { key: 'combo', color: '#FF7BAC', size: 1.0 };
+}
 let totalPerfect = 0;
 let totalGood = 0;
 let totalOK = 0;
@@ -2072,6 +2120,8 @@ function checkCollapse() {
  * - フィーバーを経験した後: スコアに応じて段々速くなる（上限あり）
  */
 function getDifficultySpeedMult() {
+  // 初プレイ（ベスト未記録）の最初の数個は特にゆっくり落として操作を掴む余裕を作る
+  if (isFirstPlay() && stack.length < FIRST_PLAY_SLOW_UNTIL_STACK) return FIRST_PLAY_SLOW;
   if (!hadFirstFever) return PRE_FEVER_SLOW;
   // フィーバー直後は前と同じ速度（PRE_FEVER_SLOW）から始め、稼いだスコアに応じて
   // 緩やかに加速し、最高速はフィーバー時の倍率（POWERUP_FALL_SPEED_MULT）に到達する。
@@ -2085,11 +2135,11 @@ function spawnFalling() {
   const baseSpeed = 8;
   const margin = 40 * UNIT;
   const maxSpread = (W / 2) - margin;
-  // 落下位置のブレ（やさしめ）：1〜2個目は中央固定、3個目から徐々に左右へ。
-  // 最大でも画面半分の 55%、30個で最大、序盤は緩やか（二乗カーブ）
-  const effCount = Math.max(0, stack.length - 1); // stack 0,1（1〜2投目）はブレなし
-  const spreadT = Math.min(effCount / 29, 1);
-  const spread = maxSpread * 0.55 * (spreadT * spreadT);
+  // 落下位置のブレ: 1個目から MIN 幅でブレさせ、積むほど MAX へ二乗カーブで広がる。
+  // 落下速度をゆるめた代わりに、この「狙いの難しさ」で難易度を作る
+  const spreadT = Math.min(stack.length / SPAWN_SPREAD_FULL_AT, 1);
+  const spread = maxSpread *
+    (SPAWN_SPREAD_MIN_FRAC + (SPAWN_SPREAD_MAX_FRAC - SPAWN_SPREAD_MIN_FRAC) * (spreadT * spreadT));
   // フィーバー中は中央固定で落とす（落下中央デバッグ時も同様）
   const x = (invincibleTimer > 0 || debugSweetCenterFixed) ? W / 2 : (W / 2 + (Math.random() - 0.5) * 2 * spread);
 
@@ -2130,8 +2180,16 @@ function spawnFalling() {
     landed: false, feverBorn: invincibleTimer > 0 };
 }
 
-function addFloatingText(x, screenY, text, color, pinY) {
-  floatingTexts.push({ x, screenY, text, color, life: 1, pinY: !!pinY });
+/** 浮遊テキスト。opts で見た目を強められる
+ *  （size=フォント倍率 / stroke=白フチ / pop=拡大縮小アニメ）。
+ *  省略時は従来どおりの見た目なので、既存の呼び出しはそのまま使える */
+function addFloatingText(x, screenY, text, color, pinY, opts) {
+  floatingTexts.push({
+    x, screenY, text, color, life: 1, pinY: !!pinY,
+    size: (opts && opts.size) || 1,
+    stroke: !!(opts && opts.stroke),
+    pop: !!(opts && opts.pop),
+  });
 }
 
 // スコア表示の更新。枠幅は固定なので、桁が増えたら文字を縮めて収める
@@ -2877,9 +2935,13 @@ function startGame() {
   score = 0; stack = []; falling = null; mogumoguFx = null;
   particles = []; floatingTexts = [];
   hideResultBanner(); // プレイ中は広告を出さない（リザルトから直接再開した場合の保険）
+  // スワイプ操作ヒントは毎回のゲーム開始時に必ず出す（初プレイ限定にしない）。
+  // スワイプした瞬間に消えるので、慣れたプレイヤーの邪魔にはならない
+  swipeHintActive = true;
+  swipeHintT = 0;
   camZoomCurrent = START_ZOOM; // 開始時は寄った状態から始める（前回の値を引きずらない）
   destroyMatterWorld();
-  comboCount = 0; totalPerfect = 0; totalGood = 0; totalOK = 0;
+  comboCount = 0; comboBanner = null; totalPerfect = 0; totalGood = 0; totalOK = 0;
   collapseTimer = 0; gameElapsed = 0; maxTowerHeight = 0; maxStackCount = 0; slidingItems = [];
   invincibleTimer = 0; nextPowerupStack = POWERUP_FIRST_AT; powerupArmed = false; lastWasTrap = false;
   hadFirstFever = false; feverStartScore = 0;
@@ -2995,7 +3057,7 @@ canvas.addEventListener('pointermove', (e) => {
   if (!isDragging) return;
   e.preventDefault();
   const dx = e.clientX - dragStartX;
-  if (Math.abs(dx) > 5) pointerMoved = true;
+  if (Math.abs(dx) > 5) { pointerMoved = true; swipeHintActive = false; } // 操作できたらヒントは即消す
   // 可動範囲は寄り倍率に連動（寄っている間は画面内に収まる範囲に狭める）
   plateX = Math.max(plateMinX(), Math.min(plateMaxX(), plateStartX + dx * PLATE_DRAG_SENS));
 });
@@ -3612,6 +3674,56 @@ function drawOyatsu(type, x, y, angle, scaleX, scaleY, glowAlpha) {
   ctx.restore();
 }
 
+/** 初プレイのスワイプ操作ヒント。お皿の下で指アイコンが左右に揺れる。
+ *  ゲームは止めない（テンポを殺さない）。スワイプした瞬間に消える */
+function drawSwipeHint(screenPlateY) {
+  // 1個でも積まれたらタワーと重なって読めなくなるので出さない
+  // （スワイプ済み・未スワイプに関わらず、役目を終えたら引っ込める）
+  if (!swipeHintActive || stack.length > 0) return;
+  const sway = Math.sin(swipeHintT * 3.2);      // -1..1 で左右に往復
+  const x = plateX + sway * 34 * UNIT;
+  // お皿の下に出す（落ちてくるスイーツやタワーと重ならない位置）
+  const y = screenPlateY + 40 * UNIT;
+  // 出はじめだけフェードイン。以降は軽く脈動させて視線を集める
+  const fade = Math.min(1, swipeHintT / 0.35);
+  const pulse = 0.85 + 0.15 * Math.sin(swipeHintT * 6);
+  ctx.save();
+  ctx.globalAlpha = fade * 0.95;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // 左右の矢印。arrow_icon.png は左向きなので、右側は左右反転して描く。
+  // 文言は出さない（矢印と指の動きだけで伝える）
+  const arrowW = 50 * UNIT, arrowH = arrowW * (100 / 150); // 元画像 150x100 の比率を保つ
+  // 矢印は「画面中央」基準で固定する（お皿に追従させない）。
+  // 追従させるとお皿を端まで動かしたとき矢印が画面外へはみ出すため。
+  // 指だけがお皿に付いて揺れるので、動かす対象は伝わる
+  const arrowGap = 100 * UNIT;
+  const arrowCx = W / 2;
+  if (IMG_ARROW.complete && IMG_ARROW.naturalWidth > 0) {
+    ctx.drawImage(IMG_ARROW, arrowCx - arrowGap - arrowW / 2, y - arrowH / 2, arrowW, arrowH);
+    ctx.save();
+    ctx.translate(arrowCx + arrowGap, y);
+    ctx.scale(-1, 1); // 右向きへ反転
+    ctx.drawImage(IMG_ARROW, -arrowW / 2, -arrowH / 2, arrowW, arrowH);
+    ctx.restore();
+  } else {
+    // 画像が未読み込みのときは絵文字で代替（表示が消えないように）
+    ctx.font = `900 ${Math.round(30 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
+    ctx.fillStyle = '#8a5a3c';
+    ctx.fillText('←', arrowCx - arrowGap, y);
+    ctx.fillText('→', arrowCx + arrowGap, y);
+  }
+  // 指アイコン（左右に揺れる。脈動で視線を集める）
+  const handH = 60 * UNIT * pulse, handW = handH * (190 / 250); // 元画像 190x250 の比率
+  if (IMG_HAND.complete && IMG_HAND.naturalWidth > 0) {
+    ctx.drawImage(IMG_HAND, x - handW / 2, y - handH / 2, handW, handH);
+  } else {
+    ctx.font = `${Math.round(34 * UNIT * pulse)}px sans-serif`;
+    ctx.fillText('👆', x, y);
+  }
+  ctx.restore();
+}
+
 function drawPlate(screenPlateY) {
   ctx.save();
   ctx.fillStyle = 'rgba(139,94,60,0.1)';
@@ -3791,6 +3903,36 @@ function drawUfo() {
 }
 
 // フィーバー突入バースト: 白フラッシュ＋放射スピードライン＋巨大FEVERバナー
+/** コンボ節目（10コンボごと）の中央バナー。
+ *  フィーバー演出と食い合わないよう、フラッシュや放射線は使わず文字のポップだけで見せる。
+ *  位置はフィーバーバナー(H*0.42)より少し上にして、同時に出ても重ならないようにする */
+function drawComboBanner() {
+  if (!comboBanner) return;
+  // 注意: 変数名に t は使わない（i18n の t() を隠してしまうため）
+  const bt = comboBanner.t;
+  const inT = Math.min(1, bt / 0.32);
+  let scale = easeOutBack(inT);
+  if (bt > 0.8) scale *= 1 - Math.min(1, (bt - 0.8) / 0.3);   // 終盤は縮んで消える
+  if (scale <= 0.001) return;
+  const alpha = bt > 0.8 ? Math.max(0, 1 - (bt - 0.8) / 0.3) : 1;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(W / 2, H * 0.30);
+  ctx.rotate(-0.04 + Math.sin(bt * 9) * 0.03 * (1 - inT));
+  ctx.scale(scale, scale);
+  ctx.font = `900 ${Math.round(40 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 9 * UNIT;
+  ctx.strokeStyle = 'rgba(250,246,236,0.95)';               // #faf6ec（他演出と同じアイボリー）
+  const label = t('combo_milestone', { n: comboBanner.n });
+  ctx.strokeText(label, 0, 0);
+  ctx.fillStyle = '#FF4F81';
+  ctx.fillText(label, 0, 0);
+  ctx.restore();
+}
+
 function drawFeverBurst() {
   if (!feverBurst) return;
   const t = feverBurst.t;
@@ -3926,6 +4068,7 @@ function drawPartyDancers() {
 function update(dt) {
   lastFrameDt = dt;
   gameElapsed += dt;
+  if (swipeHintActive) swipeHintT += dt; // 操作ヒントの揺れアニメを進める
   // 崩壊ヒットストップ: 一瞬すべて停止して衝撃を演出（フラッシュだけ減衰させる）
   if (collapseHitStop > 0) {
     collapseHitStop -= dt;
@@ -4427,8 +4570,22 @@ function update(dt) {
 
         playSweetLandSfx();
 
-        addFloatingText(landX, landingScreenY - 50, rating, ratingColor);
-        addFloatingText(landX, landingScreenY - 30, `+${itemScore}`, fever ? '#FFE9A8' : '#5A3A1E');
+        // コンボ表示: 2連続以上で判定の上に出す。数が伸びるほど色が熱くなり文字も大きくなる。
+        // 節目（10コンボごと）は中央バナーで大きく見せるので、足元の重複表示はしない
+        const isMilestone = comboCount > 0 && comboCount % COMBO_MILESTONE_EVERY === 0;
+        // 積んだスイーツに文字が重なって読めなくならないよう、上方向に十分離して並べる。
+        // コンボが出る時はさらに上へずらす（3行になるため）
+        const hasCombo = comboCount >= COMBO_SHOW_FROM && !isMilestone;
+        const lift = hasCombo ? 34 : 0;
+        if (hasCombo) {
+          const cs = comboStyle(comboCount);
+          addFloatingText(landX, landingScreenY - 108, t(cs.key, { n: comboCount }), cs.color, false,
+            { size: cs.size, stroke: true, pop: true });
+        }
+        if (isMilestone) comboBanner = { t: 0, n: comboCount };
+        addFloatingText(landX, landingScreenY - 62 - lift * 0.35, rating, ratingColor, false, { stroke: true });
+        addFloatingText(landX, landingScreenY - 36 - lift * 0.35, `+${itemScore}`,
+          fever ? '#C98A2E' : '#5A3A1E', false, { stroke: true });
         addParticles(landX, landingScreenY, falling.type.color, 8);
         // フィーバー中は着地ごとに星が弾ける
         if (fever) addStarBurst(landX, landingScreenY, 12);
@@ -4605,6 +4762,12 @@ function update(dt) {
   if (mogumoguFx) {
     mogumoguFx.t += dt;
     if (mogumoguFx.t >= mogumoguFx.duration) mogumoguFx = null;
+  }
+
+  // コンボ節目バナー（約1.1秒で消える）
+  if (comboBanner) {
+    comboBanner.t += dt;
+    if (comboBanner.t >= 1.1) comboBanner = null;
   }
 }
 
@@ -5067,6 +5230,8 @@ function draw() {
 
   // Plate（表示のみ PLATE_DRAW_OFFSET_Y 分下げる）
   drawPlate(screenPlateY + PLATE_DRAW_OFFSET_Y);
+  // 初プレイの操作ヒント（お皿の下に指アイコン）
+  drawSwipeHint(screenPlateY + PLATE_DRAW_OFFSET_Y);
 
   // Ensure clean alpha state
   ctx.globalAlpha = 1;
@@ -5205,11 +5370,32 @@ function draw() {
 
   // Floating texts (screen space)
   for (const ft of floatingTexts) {
-    ctx.globalAlpha = ft.life;
-    ctx.font = `900 ${Math.round(22 * UNIT)}px 'Zen Maru Gothic', sans-serif`;
+    const ty = ft.screenY - 20 * UNIT;
+    // pop 指定（コンボ）は「ポンと弾んで出て、最後に縮んで消える」拡大縮小アニメにする。
+    // それ以外は従来どおりフェードのみ
+    let popScale = 1;
+    if (ft.pop) {
+      const p = 1 - ft.life;                       // 0→1 の進行度
+      const inS = easeOutBack(Math.min(1, p / 0.28));            // 出はじめに弾む
+      const outS = p > 0.72 ? 1 - (p - 0.72) / 0.28 * 0.55 : 1;  // 終盤で縮む
+      popScale = inS * outS;
+      if (popScale <= 0.01) continue;
+      ctx.globalAlpha = Math.min(1, ft.life * 1.6);              // 消え際だけフェード
+    } else {
+      ctx.globalAlpha = ft.life;
+    }
+    const scale = (ft.size || 1) * popScale;
+    ctx.font = `900 ${Math.round(22 * UNIT * scale)}px 'Zen Maru Gothic', sans-serif`;
     ctx.textAlign = 'center';
+    // コンボ等の強調表示は白フチを付けて背景に負けないようにする
+    if (ft.stroke) {
+      ctx.lineWidth = 4 * UNIT * scale;
+      ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+      ctx.lineJoin = 'round';
+      ctx.strokeText(ft.text, ft.x, ty);
+    }
     ctx.fillStyle = ft.color;
-    ctx.fillText(ft.text, ft.x, ft.screenY - 20 * UNIT);
+    ctx.fillText(ft.text, ft.x, ty);
   }
   ctx.globalAlpha = 1;
   ctx.restore(); // ここまでがワールド描画（寄りの対象）。以降は画面固定のHUD
@@ -5244,6 +5430,9 @@ function draw() {
     ctx.fill();
     ctx.restore();
   }
+
+  // コンボ節目バナー（フィーバー演出より下。競合しないよう控えめ）
+  drawComboBanner();
 
   // フィーバー突入バースト（最前面）
   drawFeverBurst();
