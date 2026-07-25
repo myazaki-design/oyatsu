@@ -2876,6 +2876,7 @@ document.getElementById('continue-no').addEventListener('click', function (e) {
 function startGame() {
   score = 0; stack = []; falling = null; mogumoguFx = null;
   particles = []; floatingTexts = [];
+  hideResultBanner(); // プレイ中は広告を出さない（リザルトから直接再開した場合の保険）
   camZoomCurrent = START_ZOOM; // 開始時は寄った状態から始める（前回の値を引きずらない）
   destroyMatterWorld();
   comboCount = 0; totalPerfect = 0; totalGood = 0; totalOK = 0;
@@ -2968,6 +2969,8 @@ function showResult() {
 
   // iOSアプリ: リザルト後のインタースティシャル広告（2回に1回・90秒間隔の頻度制限つき）
   maybeShowInterstitial();
+  // iOSアプリ: リザルト表示中は最下部にバナーを出す（タイトルへ戻る/再プレイで消す）
+  showResultBanner();
 
   lastSessionCollapseLog = playCollapseLog.slice();
 
@@ -3033,6 +3036,7 @@ document.addEventListener('keyup', (e) => {
 function goToTitle() {
   state = 'start';
   falling = null; mogumoguFx = null;
+  hideResultBanner(); // リザルトを離れるのでバナーを消す
   stopMainBgm();
   destroyMatterWorld();
   setPaused(false);
@@ -3221,6 +3225,7 @@ const ADMOB = {
   // 本番ID（AdMob管理画面で発行済み）
   interstitialId: 'ca-app-pub-5048076405660377/9980115149', // リザルト後
   rewardId: 'ca-app-pub-5048076405660377/3785820427',       // コンティニュー
+  bannerId: 'ca-app-pub-5048076405660377/6992725230',        // リザルト下部バナー
   // 開発中はtrue（Google公式テスト広告を表示）。App Storeリリース時にfalseへ
   useTest: false,
 };
@@ -3228,6 +3233,7 @@ const ADMOB = {
 const ADMOB_TEST = {
   interstitialId: 'ca-app-pub-3940256099942544/4411468910',
   rewardId: 'ca-app-pub-3940256099942544/1712485313',
+  bannerId: 'ca-app-pub-3940256099942544/2934735716',
 };
 function admobPlugin() {
   try {
@@ -3241,11 +3247,15 @@ function admobRewardUnitId() {
 function admobInterstitialUnitId() {
   return (ADMOB.useTest || !ADMOB.interstitialId) ? ADMOB_TEST.interstitialId : ADMOB.interstitialId;
 }
+function admobBannerUnitId() {
+  return (ADMOB.useTest || !ADMOB.bannerId) ? ADMOB_TEST.bannerId : ADMOB.bannerId;
+}
 
 const admobState = {
   inited: false,
   rewardLoaded: false,
   interstitialLoaded: false,
+  bannerShown: false,       // リザルト最下部バナーを表示中か（二重表示・二重解除の防止）
   rewardEarned: false,      // 直近のリワード広告で報酬を得たか
   resultCount: 0,           // インタースティシャル頻度制御: リザルト表示回数
   lastInterstitialAt: 0,    // 同: 最後に表示した時刻(ms)
@@ -3325,6 +3335,34 @@ function maybeShowInterstitial() {
   if (now - admobState.lastInterstitialAt < INTERSTITIAL_MIN_INTERVAL_MS) return;
   admobState.lastInterstitialAt = now;
   try { admobPlugin().showInterstitial().catch(function () {}); } catch (e) {}
+}
+
+/** リザルト画面の最下部バナー。iOSアプリのみ（GMO/Webでは呼ばれても何もしない）。
+ *  誤タップ防止のため画面最下部固定（ボタンは画面中央付近なので離れる）。
+ *  margin は px 指定で、ホームインジケーターぶん少し持ち上げる */
+function showResultBanner() {
+  if (!admobOn() || admobState.bannerShown) return;
+  admobState.bannerShown = true;
+  try {
+    admobPlugin().showBanner({
+      adId: admobBannerUnitId(),
+      adSize: 'ADAPTIVE_BANNER',
+      position: 'BOTTOM_CENTER',
+      margin: 0,
+      isTesting: ADMOB.useTest || !ADMOB.bannerId,
+    }).catch(function () { admobState.bannerShown = false; });
+  } catch (e) { admobState.bannerShown = false; }
+}
+/** リザルトを離れるときにバナーを消す（プレイ中は広告を出さない） */
+function hideResultBanner() {
+  if (!admobOn() || !admobState.bannerShown) return;
+  admobState.bannerShown = false;
+  try {
+    const p = admobPlugin();
+    // hideBanner は残る実装もあるため removeBanner まで行って確実に消す
+    if (p.hideBanner) p.hideBanner().catch(function () {});
+    if (p.removeBanner) p.removeBanner().catch(function () {});
+  } catch (e) {}
 }
 // 起動時に初期化（iOSアプリ以外では何もしない）
 initAdMob();
